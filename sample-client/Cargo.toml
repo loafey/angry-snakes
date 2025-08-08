@@ -1,0 +1,14 @@
+[package]
+name = "sample-client"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "sample-client"
+path = "main.rs"
+
+[dependencies]
+tungstenite.workspace = true
+async-tungstenite.workspace = true
+tokio.workspace = true
+futures.workspace = true
