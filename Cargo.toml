@@ -3,4 +3,14 @@ name = "battlesnakes"
 version = "0.1.0"
 edition = "2024"
 
+[workspace.dependencies]
+axum = { version = "0.8.4", features = ["ws"] }
+tokio = { version = "1.47.1", features = ["full"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+
 [dependencies]
+axum.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
