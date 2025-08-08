@@ -12,3 +12,4 @@ tungstenite.workspace = true
 async-tungstenite.workspace = true
 tokio.workspace = true
 futures.workspace = true
+battlesnakes-shared.workspace = true

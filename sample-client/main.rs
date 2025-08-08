@@ -1,10 +1,13 @@
-use async_tungstenite::{client_async, tokio::connect_async};
+use std::time::Duration;
+
+use async_tungstenite::tokio::connect_async;
 use futures::StreamExt;
-use tungstenite::{Message, connect};
+use tokio::time::interval;
+use tungstenite::Message;
 
 #[tokio::main]
 async fn main() {
-    let (socket, response) = match connect_async("ws://0.0.0.0:8000/ws").await {
+    let (socket, _) = match connect_async("ws://0.0.0.0:8000/ws").await {
         Ok(o) => o,
         Err(e) => match e {
             tungstenite::Error::Http(res) => {
@@ -18,25 +21,24 @@ async fn main() {
         },
     };
 
-    println!("Connected to the server");
-    println!("Response HTTP code: {}", response.status());
-    println!("Response contains the following headers:");
-    for (header, _value) in response.headers() {
-        println!("* {header}");
-    }
-
     let (writer, mut reader) = socket.split();
-    writer
-        .send(Message::Text("Hello WebSocket".into()))
-        .await
-        .unwrap();
+    let mut interval = interval(Duration::from_secs(1));
     loop {
-        let msg = reader
-            .next()
-            .await
-            .expect("Error reading message")
-            .expect("Error reading message");
-        println!("Received: {msg}");
+        tokio::select! {
+            _ = interval.tick() => {
+                writer
+                    .send(Message::Text("Hello WebSocket".into()))
+                    .await
+                    .unwrap();
+                println!("tick!")
+            }
+            msg = reader.next() => {
+                let msg = msg
+                    .expect("Error reading message")
+                    .expect("Error reading message");
+                println!("Received: {msg}");
+            }
+        }
     }
     // socket.close(None);
 }
