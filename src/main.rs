@@ -17,6 +17,9 @@ use tokio::{
     time::interval,
 };
 
+use crate::game::Game;
+mod game;
+
 enum ClientUpdate {
     Join(
         SocketAddr,
@@ -24,65 +27,6 @@ enum ClientUpdate {
         oneshot::Sender<mpsc::UnboundedReceiver<ServerMessage>>,
     ),
     Left(SocketAddr, String),
-}
-
-async fn game_loop(
-    mut new_clients: mpsc::UnboundedReceiver<ClientUpdate>,
-    mut msgs: mpsc::UnboundedReceiver<(SocketAddr, ClientMessage)>,
-) {
-    struct ClientInfo {
-        name: String,
-        msg: mpsc::UnboundedSender<ServerMessage>,
-        msg_count: usize,
-    }
-
-    let mut interval = interval(Duration::from_secs(1));
-    let mut clients: HashMap<SocketAddr, ClientInfo> = HashMap::new();
-    loop {
-        let (addr, msg) = tokio::select! {
-            _ = interval.tick() => {
-                info!("tick");
-                for cli in clients.values_mut() {
-                    _ = cli.msg.send(ServerMessage::Tick);
-                    cli.msg_count = 0;
-                }
-                continue;
-            }
-            msg = new_clients.recv() => {
-                let Some(msg) = msg else { break };
-                match msg {
-                    ClientUpdate::Join(addr, name, pipe) => {
-                        let (msg_send, msg_recv) = mpsc::unbounded_channel();
-                        trace!("got new client: {addr} | {name}");
-                        _ = pipe.send(msg_recv);
-                        clients.insert(addr, ClientInfo {
-                            name,
-                            msg: msg_send,
-                            msg_count: 0
-                        });
-                    },
-                    ClientUpdate::Left(addr, reason) => {
-                        info!("{addr}: left, {reason}");
-                        clients.remove(&addr);
-                    }
-                }
-                continue;
-            }
-            msg = msgs.recv() => {
-                let Some((addr, msg)) = msg else { break };
-                let Some(cl) = clients.get_mut(&addr) else { continue };
-                cl.msg_count += 1;
-                if cl.msg_count == 2 || cl.msg_count.is_multiple_of(10) {
-                    warn!("{addr}: sent too many messages: {}", cl.msg_count);
-                }
-                if cl.msg_count != 1 {
-                    continue;
-                }
-                (addr, msg)
-            }
-        };
-        info!("{addr}: {msg:?}");
-    }
 }
 
 #[allow(unused_imports)]
@@ -113,7 +57,15 @@ async fn main() {
             msg_send,
         });
 
-    tokio::spawn(game_loop(client_update_recv, msg_recv));
+    tokio::spawn(async move {
+        let mut game = Game::new(msg_recv, client_update_recv);
+        loop {
+            let Err(e) = game.tick().await else {
+                continue;
+            };
+            error!("game loop: {e}");
+        }
+    });
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000")
         .await
