@@ -1,10 +1,14 @@
-use std::{collections::HashMap, net::SocketAddr, time::Duration};
+use std::{
+    collections::{HashMap, VecDeque},
+    net::SocketAddr,
+    time::Duration,
+};
 
 use anyhow::Context;
 use battlesnakes_shared::{ClientMessage, Direction, Map, MapPiece, ServerMessage};
 use tokio::{
     sync::mpsc,
-    time::{Interval, interval},
+    time::{Instant, Interval, interval, interval_at},
 };
 
 use crate::ClientUpdate;
@@ -14,6 +18,8 @@ struct ClientInfo {
     msg: mpsc::UnboundedSender<ServerMessage>,
     msg_count: usize,
     position: (usize, usize),
+    tail: VecDeque<(usize, usize)>,
+    tail_len: usize,
     direction: Direction,
 }
 
@@ -32,7 +38,7 @@ impl Game {
         msgs: mpsc::UnboundedReceiver<(SocketAddr, ClientMessage)>,
         new_clients: mpsc::UnboundedReceiver<ClientUpdate>,
     ) -> Self {
-        let map_size = (14, 8);
+        let map_size = (20, 9);
         Self {
             new_clients,
             msgs,
@@ -48,7 +54,11 @@ impl Game {
     async fn handle_tick(&mut self) -> anyhow::Result<()> {
         self.tick += 1;
         self.map = vec![MapPiece::Empty; self.map_size.0 * self.map_size.1];
-        for (_, c) in &mut self.clients {
+        for c in self.clients.values_mut() {
+            c.tail.push_front(c.position);
+            if c.tail.len() > c.tail_len {
+                c.tail.pop_back();
+            }
             match c.direction {
                 Direction::Left => {
                     if c.position.0 == 0 {
@@ -81,13 +91,19 @@ impl Game {
             }
 
             let index = c.position.0 + (c.position.1 * self.map_size.0);
-            self.map[index] = MapPiece::Snake;
+            self.map[index] = MapPiece::SnakeHead;
+            for tail in &c.tail {
+                let index = tail.0 + (tail.1 * self.map_size.0);
+                self.map[index] = MapPiece::Snake;
+            }
         }
 
         for (i, r) in self.map.iter().enumerate() {
             let c = match r {
-                MapPiece::Snake => "s",
-                MapPiece::Empty => ".",
+                MapPiece::Snake => "🟩",
+                MapPiece::SnakeHead => "🐍",
+                MapPiece::Apple => "🍎",
+                MapPiece::Empty => "░░",
             };
 
             if i.is_multiple_of(self.map_size.0) {
@@ -110,9 +126,19 @@ impl Game {
         Ok(())
     }
 
+    fn speedup(&mut self) {
+        let dur = self.interval.period();
+        let m = Duration::from_secs_f32(0.01);
+        if dur > m && dur > Duration::from_secs_f32(0.1) {
+            let new = dur - m;
+            self.interval = interval_at(Instant::now() + new, new);
+        }
+    }
+
     pub async fn tick(&mut self) -> anyhow::Result<()> {
         let (addr, msg) = tokio::select! {
             _ = self.interval.tick() => {
+                self.speedup();
                 for cli in self.clients.values_mut() {
                     _ = cli.msg.send(ServerMessage::Tick{
                         map: self.map.clone(),
@@ -144,7 +170,9 @@ impl Game {
                             msg: msg_send,
                             msg_count: 0,
                             position,
-                            direction: Direction::from(rand::random_range(0..4))
+                            direction: Direction::from(rand::random_range(0..4)),
+                            tail: VecDeque::new(),
+                            tail_len: 2,
                         });
                     },
                     ClientUpdate::Left(addr, reason) => {

@@ -67,5 +67,7 @@ pub type Map = Vec<MapPiece>;
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub enum MapPiece {
     Snake,
+    SnakeHead,
+    Apple,
     Empty,
 }
