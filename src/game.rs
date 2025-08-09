@@ -1,7 +1,7 @@
 use std::{collections::HashMap, net::SocketAddr, time::Duration};
 
 use anyhow::Context;
-use battlesnakes_shared::{ClientMessage, ServerMessage};
+use battlesnakes_shared::{ClientMessage, Direction, Map, MapPiece, ServerMessage};
 use tokio::{
     sync::mpsc,
     time::{Interval, interval},
@@ -13,6 +13,8 @@ struct ClientInfo {
     name: String,
     msg: mpsc::UnboundedSender<ServerMessage>,
     msg_count: usize,
+    position: (usize, usize),
+    direction: Direction,
 }
 
 pub struct Game {
@@ -20,21 +22,91 @@ pub struct Game {
     msgs: mpsc::UnboundedReceiver<(SocketAddr, ClientMessage)>,
     clients: HashMap<SocketAddr, ClientInfo>,
     interval: Interval,
+
+    map: Map,
+    map_size: (usize, usize),
+    tick: usize,
 }
 impl Game {
     pub fn new(
         msgs: mpsc::UnboundedReceiver<(SocketAddr, ClientMessage)>,
         new_clients: mpsc::UnboundedReceiver<ClientUpdate>,
     ) -> Self {
+        let map_size = (14, 8);
         Self {
             new_clients,
             msgs,
             clients: HashMap::new(),
             interval: interval(Duration::from_secs(1)),
+            map: vec![MapPiece::Empty; map_size.0 * map_size.1],
+            map_size,
+            tick: 0,
         }
     }
+
+    #[allow(clippy::print_stdout)]
+    async fn handle_tick(&mut self) -> anyhow::Result<()> {
+        self.tick += 1;
+        self.map = vec![MapPiece::Empty; self.map_size.0 * self.map_size.1];
+        for (_, c) in &mut self.clients {
+            match c.direction {
+                Direction::Left => {
+                    if c.position.0 == 0 {
+                        c.position.0 = self.map_size.0 - 1;
+                    } else {
+                        c.position.0 -= 1;
+                    }
+                }
+                Direction::Right => {
+                    if c.position.0 == self.map_size.0 - 1 {
+                        c.position.0 = 0;
+                    } else {
+                        c.position.0 += 1;
+                    }
+                }
+                Direction::Up => {
+                    if c.position.1 == 0 {
+                        c.position.1 = self.map_size.1 - 1;
+                    } else {
+                        c.position.1 -= 1;
+                    }
+                }
+                Direction::Down => {
+                    if c.position.1 == self.map_size.1 - 1 {
+                        c.position.1 = 0;
+                    } else {
+                        c.position.1 += 1;
+                    }
+                }
+            }
+
+            let index = c.position.0 + (c.position.1 * self.map_size.0);
+            self.map[index] = MapPiece::Snake;
+        }
+
+        for (i, r) in self.map.iter().enumerate() {
+            let c = match r {
+                MapPiece::Snake => "s",
+                MapPiece::Empty => ".",
+            };
+
+            if i.is_multiple_of(self.map_size.0) {
+                println!()
+            }
+            print!("{c}");
+        }
+        println!("\nTick: {}", self.tick);
+        Ok(())
+    }
     async fn handle_message(&mut self, who: SocketAddr, msg: ClientMessage) -> anyhow::Result<()> {
-        info!("{who}: {msg:?}");
+        let Some(cli) = self.clients.get_mut(&who) else {
+            error!("got message for non-existent client: {who}");
+            return Ok(());
+        };
+        match msg {
+            ClientMessage::Turn(turn_direction) => cli.direction += turn_direction,
+            ClientMessage::SetName(_) => {}
+        }
         Ok(())
     }
 
@@ -42,10 +114,13 @@ impl Game {
         let (addr, msg) = tokio::select! {
             _ = self.interval.tick() => {
                 for cli in self.clients.values_mut() {
-                    _ = cli.msg.send(ServerMessage::Tick);
+                    _ = cli.msg.send(ServerMessage::Tick{
+                        map: self.map.clone(),
+                        map_size: self.map_size
+                    });
                     cli.msg_count = 0;
                 }
-                return Ok(());
+                return self.handle_tick().await;
             }
             msg = self.new_clients.recv() => {
                 let msg = msg.context("new client pipe is dead")?;
@@ -54,10 +129,22 @@ impl Game {
                         let (msg_send, msg_recv) = mpsc::unbounded_channel();
                         trace!("got new client: {addr} | {name}");
                         _ = pipe.send(msg_recv);
+                        let position = 'outer: loop {
+                            let x = rand::random_range(0..self.map_size.0);
+                            let y = rand::random_range(0..self.map_size.1);
+                            for c in self.clients.values() {
+                                if c.position == (x,y) {
+                                    continue 'outer;
+                                }
+                            }
+                            break (x,y);
+                        };
                         self.clients.insert(addr, ClientInfo {
                             name,
                             msg: msg_send,
-                            msg_count: 0
+                            msg_count: 0,
+                            position,
+                            direction: Direction::from(rand::random_range(0..4))
                         });
                     },
                     ClientUpdate::Left(addr, reason) => {

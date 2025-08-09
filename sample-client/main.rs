@@ -33,12 +33,17 @@ async fn game_client() -> anyhow::Result<()> {
 
     while let Some(Ok(Message::Text(msg))) = reader.next().await {
         let msg = serde_json::from_slice::<ServerMessage>(msg.as_bytes())?;
-        println!("got: {msg:?}");
-        let dir = match rand::random::<bool>() {
-            true => TurnDirection::Clockwise,
-            false => TurnDirection::CounterClockwise,
-        };
-        writer.msg(ClientMessage::Turn(dir)).await?;
+        match msg {
+            ServerMessage::Tick { map, map_size } => {
+                if rand::random::<bool>() {
+                    let dir = match rand::random::<bool>() {
+                        true => TurnDirection::Clockwise,
+                        false => TurnDirection::CounterClockwise,
+                    };
+                    writer.msg(ClientMessage::Turn(dir)).await?;
+                }
+            }
+        }
     }
     writer.close(None).await?;
     Ok(())
