@@ -17,6 +17,10 @@ futures = "0.3.31"
 axum-extra = { version = "0.10.1", features = ["typed-header"] }
 futures-util = "0.3.31"
 battlesnakes-shared = { path = "crates/battlesnakes-shared" }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.142"
+anyhow = "1.0.98"
+rand = "0.9.2"
 
 [dependencies]
 axum.workspace = true
@@ -26,3 +30,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 futures-util.workspace = true
 battlesnakes-shared.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+rand.workspace = true

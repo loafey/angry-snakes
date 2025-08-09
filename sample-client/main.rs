@@ -1,12 +1,19 @@
-use std::time::Duration;
-
+use crate::client_ext::ClientExt;
 use async_tungstenite::tokio::connect_async;
+use battlesnakes_shared::{ClientMessage, ServerMessage, TurnDirection};
 use futures::StreamExt;
-use tokio::time::interval;
+use rand::{Rng, distr::Alphanumeric};
 use tungstenite::Message;
 
-#[tokio::main]
-async fn main() {
+mod client_ext;
+
+async fn game_client() -> anyhow::Result<()> {
+    let name = rand::rng()
+        .sample_iter(&Alphanumeric)
+        .take(10)
+        .map(char::from)
+        .collect::<String>();
+    println!("My name is: {name}");
     let (socket, _) = match connect_async("ws://0.0.0.0:8000/ws").await {
         Ok(o) => o,
         Err(e) => match e {
@@ -22,23 +29,26 @@ async fn main() {
     };
 
     let (writer, mut reader) = socket.split();
-    let mut interval = interval(Duration::from_secs(1));
-    loop {
-        tokio::select! {
-            _ = interval.tick() => {
-                writer
-                    .send(Message::Text("Hello WebSocket".into()))
-                    .await
-                    .unwrap();
-                println!("tick!")
-            }
-            msg = reader.next() => {
-                let msg = msg
-                    .expect("Error reading message")
-                    .expect("Error reading message");
-                println!("Received: {msg}");
-            }
-        }
+    writer.msg(ClientMessage::SetName(name.clone())).await?;
+
+    while let Some(Ok(Message::Text(msg))) = reader.next().await {
+        let msg = serde_json::from_slice::<ServerMessage>(msg.as_bytes())?;
+        println!("got: {msg:?}");
+        let dir = match rand::random::<bool>() {
+            true => TurnDirection::Clockwise,
+            false => TurnDirection::CounterClockwise,
+        };
+        writer.msg(ClientMessage::Turn(dir)).await?;
     }
-    // socket.close(None);
+    writer.close(None).await?;
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    for _ in 0..1 {
+        tokio::spawn(game_client());
+    }
+    game_client().await?;
+    Ok(())
 }
