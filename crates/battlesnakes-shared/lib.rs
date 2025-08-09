@@ -64,7 +64,7 @@ pub enum ServerMessage {
 
 pub type Map = Vec<MapPiece>;
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 pub enum MapPiece {
     Snake,
     SnakeHead,

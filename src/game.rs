@@ -59,6 +59,7 @@ impl Game {
             if c.tail.len() > c.tail_len {
                 c.tail.pop_back();
             }
+            c.tail_len += rand::random_bool(0.1) as usize;
             match c.direction {
                 Direction::Left => {
                     if c.position.0 == 0 {
@@ -94,7 +95,9 @@ impl Game {
             self.map[index] = MapPiece::SnakeHead;
             for tail in &c.tail {
                 let index = tail.0 + (tail.1 * self.map_size.0);
-                self.map[index] = MapPiece::Snake;
+                if self.map[index] == MapPiece::Empty {
+                    self.map[index] = MapPiece::Snake;
+                }
             }
         }
 
