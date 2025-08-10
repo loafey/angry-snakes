@@ -141,12 +141,7 @@ fn path_to_apple(
     }
 }
 
-async fn game_client() -> anyhow::Result<()> {
-    let name = rand::rng()
-        .sample_iter(&Alphanumeric)
-        .take(10)
-        .map(char::from)
-        .collect::<String>();
+async fn game_client(name: String) -> anyhow::Result<()> {
     println!("My name is: {name}");
     let (socket, _) = match connect_async("ws://0.0.0.0:8000/ws").await {
         Ok(o) => o,
@@ -203,10 +198,15 @@ async fn game_client() -> anyhow::Result<()> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let mut names = include!("names.txt")
+        .into_iter()
+        .map(|s| s.to_string())
+        .cycle();
+
     #[allow(clippy::reversed_empty_ranges)]
     for _ in 0..10 {
-        tokio::spawn(game_client());
+        tokio::spawn(game_client(names.next().unwrap()));
     }
-    game_client().await?;
+    game_client(names.next().unwrap()).await?;
     Ok(())
 }
