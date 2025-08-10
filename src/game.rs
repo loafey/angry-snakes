@@ -1,4 +1,5 @@
 use std::{
+    arch::naked_asm,
     collections::{HashMap, VecDeque},
     net::SocketAddr,
     time::Duration,
@@ -32,13 +33,18 @@ pub struct Game {
     map: Map,
     map_size: (usize, usize),
     tick: usize,
+    apples: Vec<(usize, usize)>,
 }
 impl Game {
     pub fn new(
         msgs: mpsc::UnboundedReceiver<(SocketAddr, ClientMessage)>,
         new_clients: mpsc::UnboundedReceiver<ClientUpdate>,
     ) -> Self {
-        let map_size = (20, 9);
+        let map_size = (20, 14);
+        let apples = vec![(
+            rand::random_range(0..map_size.0),
+            rand::random_range(0..map_size.1),
+        )];
         Self {
             new_clients,
             msgs,
@@ -47,6 +53,36 @@ impl Game {
             map: vec![MapPiece::Empty; map_size.0 * map_size.1],
             map_size,
             tick: 0,
+            apples,
+        }
+    }
+
+    fn spawn_apple(&mut self, count: usize) {
+        self.apples = Vec::new();
+        for _ in 0..count {
+            'outer: for _ in 0..100 {
+                let position = (
+                    rand::random_range(0..self.map_size.0),
+                    rand::random_range(0..self.map_size.1),
+                );
+                for apple in &self.apples {
+                    if *apple == position {
+                        continue 'outer;
+                    }
+                }
+                for c in self.clients.values() {
+                    if c.position == position {
+                        continue 'outer;
+                    }
+                    for t in &c.tail {
+                        if *t == position {
+                            continue 'outer;
+                        }
+                    }
+                }
+                self.apples.push(position);
+                break;
+            }
         }
     }
 
@@ -54,12 +90,16 @@ impl Game {
     async fn handle_tick(&mut self) -> anyhow::Result<()> {
         self.tick += 1;
         self.map = vec![MapPiece::Empty; self.map_size.0 * self.map_size.1];
+        for (x, y) in &self.apples {
+            let index = x + (y * self.map_size.0);
+            self.map[index] = MapPiece::Apple;
+        }
+        let mut needs_new_apples = false;
         for c in self.clients.values_mut() {
             c.tail.push_front(c.position);
             if c.tail.len() > c.tail_len {
                 c.tail.pop_back();
             }
-            c.tail_len += rand::random_bool(0.1) as usize;
             match c.direction {
                 Direction::Left => {
                     if c.position.0 == 0 {
@@ -92,6 +132,10 @@ impl Game {
             }
 
             let index = c.position.0 + (c.position.1 * self.map_size.0);
+            if self.map[index] == MapPiece::Apple {
+                c.tail_len += 1;
+                needs_new_apples = true;
+            }
             self.map[index] = MapPiece::SnakeHead;
             for tail in &c.tail {
                 let index = tail.0 + (tail.1 * self.map_size.0);
@@ -100,19 +144,15 @@ impl Game {
                 }
             }
         }
+        if needs_new_apples {
+            self.spawn_apple(1);
+        }
 
         for (i, r) in self.map.iter().enumerate() {
-            let c = match r {
-                MapPiece::Snake => "🟩",
-                MapPiece::SnakeHead => "🐍",
-                MapPiece::Apple => "🍎",
-                MapPiece::Empty => "░░",
-            };
-
             if i.is_multiple_of(self.map_size.0) {
                 println!()
             }
-            print!("{c}");
+            print!("{r}");
         }
         println!("\nTick: {}", self.tick);
         Ok(())
@@ -143,9 +183,11 @@ impl Game {
             _ = self.interval.tick() => {
                 self.speedup();
                 for cli in self.clients.values_mut() {
-                    _ = cli.msg.send(ServerMessage::Tick{
+                    _ = cli.msg.send(ServerMessage::Tick {
                         map: self.map.clone(),
-                        map_size: self.map_size
+                        map_size: self.map_size,
+                        your_direction: cli.direction,
+                        your_position: cli.position,
                     });
                     cli.msg_count = 0;
                 }

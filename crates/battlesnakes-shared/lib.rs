@@ -59,7 +59,12 @@ pub enum ClientMessage {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ServerMessage {
-    Tick { map: Map, map_size: (usize, usize) },
+    Tick {
+        map: Map,
+        map_size: (usize, usize),
+        your_position: (usize, usize),
+        your_direction: Direction,
+    },
 }
 
 pub type Map = Vec<MapPiece>;
@@ -70,4 +75,15 @@ pub enum MapPiece {
     SnakeHead,
     Apple,
     Empty,
+}
+
+impl std::fmt::Display for MapPiece {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MapPiece::Snake => write!(f, "🟩"),
+            MapPiece::SnakeHead => write!(f, "🐍"),
+            MapPiece::Apple => write!(f, "🍎"),
+            MapPiece::Empty => write!(f, "░░"),
+        }
+    }
 }
