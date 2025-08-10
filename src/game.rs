@@ -148,9 +148,21 @@ impl Game {
             self.spawn_apple(1);
         }
 
+        let mut scoreboard = Vec::new();
+        for c in self.clients.values() {
+            scoreboard.push((&c.name, c.tail_len));
+        }
+        scoreboard.sort_by_key(|(_, s)| usize::MAX - s);
+        let mut score_index = 0;
         for (i, r) in self.map.iter().enumerate() {
             if i.is_multiple_of(self.map_size.0) {
-                println!()
+                match scoreboard.get(score_index) {
+                    Some((name, score)) => {
+                        println!(" {name}: {score}");
+                        score_index += 1;
+                    }
+                    None => println!(),
+                }
             }
             print!("{r}");
         }
