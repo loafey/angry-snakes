@@ -131,6 +131,11 @@ fn path_to_apple(
             (Down, Right) => Some(CounterClockwise),
             _ => None,
         }
+    } else if rand::random_bool(0.1) {
+        match rand::random::<bool>() {
+            true => Some(TurnDirection::Clockwise),
+            false => Some(TurnDirection::CounterClockwise),
+        }
     } else {
         None
     }
