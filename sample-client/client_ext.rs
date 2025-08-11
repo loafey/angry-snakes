@@ -1,5 +1,5 @@
 use async_tungstenite::{WebSocketSender, tokio::TokioAdapter};
-use battlesnakes_shared::ClientMessage;
+use snakes_shared::ClientMessage;
 use tokio::net::TcpStream;
 use tungstenite::{Message, Utf8Bytes};
 

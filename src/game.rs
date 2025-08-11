@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::Context;
-use battlesnakes_shared::{
+use snakes_shared::{
     ClientMessage, Direction, Map, MapPiece, PlayerData, ServerMessage, WatchUpdate,
 };
 use tokio::{

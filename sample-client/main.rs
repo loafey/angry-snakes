@@ -2,10 +2,10 @@ use std::env::args;
 
 use crate::client_ext::ClientExt;
 use async_tungstenite::tokio::connect_async;
-use battlesnakes_shared::{ClientMessage, Direction, MapPiece, ServerMessage, TurnDirection};
 use futures::StreamExt;
 use pathfinding::directed::dijkstra::dijkstra;
 use rand::{Rng, distr::Alphanumeric};
+use snakes_shared::{ClientMessage, Direction, MapPiece, ServerMessage, TurnDirection};
 use tungstenite::Message;
 
 mod client_ext;

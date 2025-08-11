@@ -27,6 +27,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "angry-snakes"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "axum-extra",
+ "futures-util",
+ "rand",
+ "schemars",
+ "serde",
+ "serde_json",
+ "snakes-shared",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -161,33 +179,6 @@ name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
-
-[[package]]
-name = "battlesnakes"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "axum-extra",
- "battlesnakes-shared",
- "futures-util",
- "rand",
- "schemars",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "battlesnakes-shared"
-version = "0.1.0"
-dependencies = [
- "schemars",
- "serde",
- "serde_json",
-]
 
 [[package]]
 name = "bitflags"
@@ -889,12 +880,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-tungstenite",
- "battlesnakes-shared",
  "futures",
  "pathfinding",
  "rand",
  "serde",
  "serde_json",
+ "snakes-shared",
  "tokio",
  "tungstenite 0.27.0",
 ]
@@ -1041,6 +1032,15 @@ name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
+
+[[package]]
+name = "snakes-shared"
+version = "0.1.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "socket2"

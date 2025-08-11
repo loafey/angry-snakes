@@ -1,5 +1,5 @@
 [package]
-name = "battlesnakes-shared"
+name = "snakes-shared"
 version = "0.1.0"
 edition = "2024"
 

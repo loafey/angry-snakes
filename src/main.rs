@@ -9,9 +9,9 @@ use axum::{
     response::IntoResponse,
     routing::{any, get},
 };
-use battlesnakes_shared::{ClientMessage, ServerMessage, WatchUpdate};
 use futures_util::{SinkExt as _, StreamExt as _};
 use schemars::schema_for;
+use snakes_shared::{ClientMessage, ServerMessage, WatchUpdate};
 use std::{collections::HashMap, net::SocketAddr, time::Duration};
 use tokio::{
     sync::{mpsc, oneshot},
