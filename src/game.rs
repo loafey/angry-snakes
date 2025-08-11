@@ -247,7 +247,7 @@ impl Game {
     fn speedup(&mut self) {
         let dur = self.interval.period();
         let m = Duration::from_secs_f32(0.01);
-        if dur > m && dur > Duration::from_secs_f32(0.3) {
+        if dur > m && dur > Duration::from_secs_f32(0.2) {
             let new = dur - m;
             self.interval = interval_at(Instant::now() + new, new);
         }
