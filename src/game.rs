@@ -6,7 +6,9 @@ use std::{
 };
 
 use anyhow::Context;
-use battlesnakes_shared::{ClientMessage, Direction, Map, MapPiece, ServerMessage};
+use battlesnakes_shared::{
+    ClientMessage, Direction, Map, MapPiece, PlayerData, ServerMessage, WatchUpdate,
+};
 use tokio::{
     sync::mpsc,
     time::{Instant, Interval, interval, interval_at},
@@ -30,6 +32,7 @@ pub struct Game {
     msgs: mpsc::UnboundedReceiver<(SocketAddr, ClientMessage)>,
     clients: HashMap<SocketAddr, ClientInfo>,
     interval: Interval,
+    watchers: HashMap<SocketAddr, mpsc::UnboundedSender<WatchUpdate>>,
 
     map: Map,
     map_size: (usize, usize),
@@ -55,6 +58,7 @@ impl Game {
             map_size,
             tick: 0,
             apples,
+            watchers: HashMap::new(),
         }
     }
 
@@ -193,6 +197,30 @@ impl Game {
             print!("{r}");
         }
         println!("\nTick: {}", self.tick);
+
+        let mut dead_clients = Vec::new();
+        let data = WatchUpdate {
+            map: self.map.clone(),
+            map_size: self.map_size,
+            clients: self
+                .clients
+                .values()
+                .map(|s| PlayerData {
+                    name: s.name.clone(),
+                    position: s.position,
+                    tail_len: s.tail_len,
+                    death: s.death,
+                })
+                .collect(),
+        };
+        for (client, send) in &self.watchers {
+            if send.send(data.clone()).is_err() {
+                dead_clients.push(*client);
+            }
+        }
+        for client in dead_clients {
+            self.watchers.remove(&client);
+        }
         Ok(())
     }
     async fn handle_message(&mut self, who: SocketAddr, msg: ClientMessage) -> anyhow::Result<()> {
@@ -262,6 +290,10 @@ impl Game {
                     ClientUpdate::Left(addr, reason) => {
                         info!("{addr}: left, {reason}");
                         self.clients.remove(&addr);
+                    }
+                    ClientUpdate::Watcher(addr, send) => {
+                        info!("{addr}: watcher joined");
+                        self.watchers.insert(addr, send);
                     }
                 }
                 return Ok(());

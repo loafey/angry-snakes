@@ -9,7 +9,7 @@ use axum::{
     response::IntoResponse,
     routing::{any, get},
 };
-use battlesnakes_shared::{ClientMessage, ServerMessage};
+use battlesnakes_shared::{ClientMessage, ServerMessage, WatchUpdate};
 use futures_util::{SinkExt as _, StreamExt as _};
 use std::{collections::HashMap, net::SocketAddr, time::Duration};
 use tokio::{
@@ -17,7 +17,8 @@ use tokio::{
     time::interval,
 };
 
-use crate::game::Game;
+use crate::{frontend::index, game::Game};
+mod frontend;
 mod game;
 
 enum ClientUpdate {
@@ -26,6 +27,7 @@ enum ClientUpdate {
         String,
         oneshot::Sender<mpsc::UnboundedReceiver<ServerMessage>>,
     ),
+    Watcher(SocketAddr, mpsc::UnboundedSender<WatchUpdate>),
     Left(SocketAddr, String),
 }
 
@@ -50,7 +52,8 @@ async fn main() {
     let (client_update, client_update_recv) = mpsc::unbounded_channel();
     let (msg_send, msg_recv) = mpsc::unbounded_channel();
     let app = Router::new()
-        .route("/", get(async || "Hello, World!"))
+        .route("/", get(index))
+        .route("/watch", any(watch_ws_handler))
         .route("/ws", any(game_ws_handler))
         .with_state(ServerState {
             client_update,
@@ -78,76 +81,109 @@ async fn main() {
     .expect("server crash");
 }
 
+async fn watch_ws_handler(
+    ws: WebSocketUpgrade,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    State(state): State<ServerState>,
+) -> impl IntoResponse {
+    ws.on_upgrade(async move |socket| {
+        let socket = socket;
+        let who = addr;
+        let ServerState { client_update, .. } = state;
+        let (pipe_send, mut pipe) = mpsc::unbounded_channel();
+
+        client_update
+            .send(ClientUpdate::Watcher(who, pipe_send))
+            .expect("game server dead");
+        let (mut sender, mut receiver) = socket.split();
+        tokio::spawn(async move {
+            loop {
+                let msg = tokio::select! {
+                    _ = receiver.next() => {
+                        break;
+                    }
+                    msg = pipe.recv() => {
+                        let Some(msg) = msg else { break };
+                        msg
+                    }
+                };
+                let data = serde_json::to_string(&msg).expect("failed encoding");
+                sender
+                    .send(Message::Text(Utf8Bytes::from(data)))
+                    .await
+                    .expect("failed to send to client");
+            }
+        });
+    })
+}
+
 async fn game_ws_handler(
     ws: WebSocketUpgrade,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(state): State<ServerState>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| {
+    ws.on_upgrade(async move |socket| {
         let mut socket = socket;
         let who = addr;
         let ServerState {
             client_update,
             msg_send,
+            ..
         } = state;
-        async move {
-            let Some(ClientMessage::SetName(name)) = socket
-                .recv()
-                .await
-                .and_then(|s| s.ok())
-                .and_then(|s| match s {
-                    Message::Text(bytes) => Some(bytes),
-                    _ => None,
-                })
-                .and_then(|s| serde_json::from_slice::<ClientMessage>(s.as_bytes()).ok())
-            else {
-                error!("client {who} did not send a proper handshake");
-                return;
-            };
-            let (pipe_send, pipe_recv) = oneshot::channel();
-            if client_update
-                .send(ClientUpdate::Join(who, name, pipe_send))
-                .is_err()
-            {
-                return;
-            }
-            let mut pipe = pipe_recv.await.expect("failed getting pipe from server");
-            let (mut sender, mut receiver) = socket.split();
-            tokio::spawn(async move {
-                while let Some(msg) = pipe.recv().await {
-                    let json = serde_json::to_string(&msg).expect("failed encoding message");
-                    if let Err(e) = sender.send(Message::Text(Utf8Bytes::from(json))).await {
-                        client_update
-                            .send(ClientUpdate::Left(who, format!("{e}")))
-                            .expect("game server is dead");
-                        break;
-                    }
+
+        let Some(ClientMessage::SetName(name)) = socket
+            .recv()
+            .await
+            .and_then(|s| s.ok())
+            .and_then(|s| match s {
+                Message::Text(bytes) => Some(bytes),
+                _ => None,
+            })
+            .and_then(|s| serde_json::from_slice::<ClientMessage>(s.as_bytes()).ok())
+        else {
+            error!("client {who} did not send a proper handshake");
+            return;
+        };
+        let (pipe_send, pipe_recv) = oneshot::channel();
+        if client_update
+            .send(ClientUpdate::Join(who, name, pipe_send))
+            .is_err()
+        {
+            return;
+        }
+        let mut pipe = pipe_recv.await.expect("failed getting pipe from server");
+        let (mut sender, mut receiver) = socket.split();
+        tokio::spawn(async move {
+            while let Some(msg) = pipe.recv().await {
+                let json = serde_json::to_string(&msg).expect("failed encoding message");
+                if let Err(e) = sender.send(Message::Text(Utf8Bytes::from(json))).await {
+                    client_update
+                        .send(ClientUpdate::Left(who, format!("{e}")))
+                        .expect("game server is dead");
+                    break;
                 }
-            });
-            tokio::spawn(async move {
-                while let Some(Ok(msg)) = receiver.next().await {
-                    match msg {
-                        Message::Text(bytes) => {
-                            match serde_json::from_slice::<ClientMessage>(bytes.as_bytes()) {
-                                Ok(msg) => {
-                                    if msg_send.send((who, msg)).is_err() {
-                                        break;
-                                    };
-                                }
-                                Err(e) => {
-                                    warn!(
-                                        "invalid message from {who} (len = {}): {e:?}",
-                                        bytes.len()
-                                    )
-                                }
+            }
+        });
+        tokio::spawn(async move {
+            while let Some(Ok(msg)) = receiver.next().await {
+                match msg {
+                    Message::Text(bytes) => {
+                        match serde_json::from_slice::<ClientMessage>(bytes.as_bytes()) {
+                            Ok(msg) => {
+                                if msg_send.send((who, msg)).is_err() {
+                                    break;
+                                };
+                            }
+                            Err(e) => {
+                                warn!("invalid message from {who} (len = {}): {e:?}", bytes.len())
                             }
                         }
-                        Message::Close(_close_frame) => break,
-                        x => error!("unsupported message from {who}: {x:?}"),
                     }
+                    Message::Close(_close_frame) => break,
+                    x => error!("unsupported message from {who}: {x:?}"),
                 }
-                info!("{who}: closed recv loop");
-            });
-        }
+            }
+            info!("{who}: closed recv loop");
+        });
     })
 }

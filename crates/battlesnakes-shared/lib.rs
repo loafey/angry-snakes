@@ -87,3 +87,17 @@ impl std::fmt::Display for MapPiece {
         }
     }
 }
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct WatchUpdate {
+    pub map: Map,
+    pub map_size: (usize, usize),
+    pub clients: Vec<PlayerData>,
+}
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub struct PlayerData {
+    pub name: String,
+    pub position: (usize, usize),
+    pub tail_len: usize,
+    pub death: usize,
+}
