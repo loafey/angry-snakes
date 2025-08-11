@@ -256,14 +256,21 @@ impl Game {
         let (addr, msg) = tokio::select! {
             _ = self.interval.tick() => {
                 self.speedup();
-                for cli in self.clients.values_mut() {
-                    _ = cli.msg.send(ServerMessage::Tick {
+                let mut to_remove = Vec::new();
+                for (addr, cli) in &mut self.clients {
+                    let e = cli.msg.send(ServerMessage::Tick {
                         map: self.map.clone(),
                         map_size: self.map_size,
                         your_direction: cli.direction,
                         your_position: cli.position,
                     });
+                    if e.is_err() {
+                        to_remove.push(*addr)
+                    }
                     cli.msg_count = 0;
+                }
+                for cli in to_remove {
+                    self.clients.remove(&cli);
                 }
                 return self.handle_tick().await;
             }
@@ -297,10 +304,6 @@ impl Game {
                         });
                         self.id_counter += 1;
                     },
-                    ClientUpdate::Left(addr, reason) => {
-                        info!("{addr}: left, {reason}");
-                        self.clients.remove(&addr);
-                    }
                     ClientUpdate::Watcher(addr, send) => {
                         info!("{addr}: watcher joined");
                         self.watchers.insert(addr, send);

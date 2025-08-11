@@ -27,7 +27,6 @@ enum ClientUpdate {
         oneshot::Sender<mpsc::UnboundedReceiver<ServerMessage>>,
     ),
     Watcher(SocketAddr, mpsc::UnboundedSender<WatchUpdate>),
-    Left(SocketAddr, String),
 }
 
 #[allow(unused_imports)]
