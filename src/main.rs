@@ -1,4 +1,5 @@
 #![warn(clippy::print_stdout, clippy::print_stderr, clippy::unwrap_used)]
+#![feature(try_blocks)]
 
 use axum::{
     Router,
@@ -164,32 +165,32 @@ async fn game_ws_handler(
         let (mut sender, mut receiver) = socket.split();
         tokio::spawn(async move {
             while let Some(msg) = pipe.recv().await {
-                let json = serde_json::to_string(&msg).expect("failed encoding message");
-                if let Err(e) = sender.send(Message::Text(Utf8Bytes::from(json))).await {
-                    client_update
-                        .send(ClientUpdate::Left(who, format!("{e}")))
-                        .expect("game server is dead");
+                let e: anyhow::Result<()> = try {
+                    let json = serde_json::to_string(&msg)?;
+                    sender.send(Message::Text(Utf8Bytes::from(json))).await?
+                };
+                if let Err(e) = e {
+                    error!("{who} send error: {e}");
                     break;
                 }
             }
+            info!("{who}: closed send loop");
         });
         tokio::spawn(async move {
             while let Some(Ok(msg)) = receiver.next().await {
-                match msg {
-                    Message::Text(bytes) => {
-                        match serde_json::from_slice::<ClientMessage>(bytes.as_bytes()) {
-                            Ok(msg) => {
-                                if msg_send.send((who, msg)).is_err() {
-                                    break;
-                                };
-                            }
-                            Err(e) => {
-                                warn!("invalid message from {who} (len = {}): {e:?}", bytes.len())
-                            }
+                let e: anyhow::Result<()> = try {
+                    match msg {
+                        Message::Text(bytes) => {
+                            let msg = serde_json::from_slice::<ClientMessage>(bytes.as_bytes())?;
+                            msg_send.send((who, msg))?;
                         }
+                        Message::Close(_close_frame) => break,
+                        x => Err(anyhow::Error::msg(format!("{x:?}",)))?,
                     }
-                    Message::Close(_close_frame) => break,
-                    x => error!("unsupported message from {who}: {x:?}"),
+                };
+                if let Err(e) = e {
+                    error!("{who} recv error: {e}");
+                    break;
                 }
             }
             info!("{who}: closed recv loop");
