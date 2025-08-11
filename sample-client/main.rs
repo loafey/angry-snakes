@@ -1,3 +1,5 @@
+use std::env::args;
+
 use crate::client_ext::ClientExt;
 use async_tungstenite::tokio::connect_async;
 use battlesnakes_shared::{ClientMessage, Direction, MapPiece, ServerMessage, TurnDirection};
@@ -203,8 +205,12 @@ async fn main() -> anyhow::Result<()> {
         .map(|s| s.to_string())
         .cycle();
 
+    let snake_count = args()
+        .nth(1)
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or_default();
     #[allow(clippy::reversed_empty_ranges)]
-    for _ in 0..1 {
+    for _ in 0..snake_count {
         tokio::spawn(game_client(names.next().unwrap()));
     }
     game_client(names.next().unwrap()).await?;

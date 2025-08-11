@@ -186,25 +186,25 @@ impl Game {
             data.death += 1;
         }
 
-        let mut scoreboard = Vec::new();
-        for c in self.clients.values() {
-            scoreboard.push((&c.name, c.tail_len, c.death));
-        }
-        scoreboard.sort_by_key(|(_, s, _)| usize::MAX - s);
-        let mut score_index = 0;
-        for (i, r) in self.map.iter().enumerate() {
-            if i != 0 && i.is_multiple_of(self.map_size.0) {
-                match scoreboard.get(score_index) {
-                    Some((name, score, death)) => {
-                        println!(" {name}: {score}, {death}");
-                        score_index += 1;
-                    }
-                    None => println!(),
-                }
-            }
-            print!("{r}");
-        }
-        println!("\nTick: {}", self.tick);
+        // let mut scoreboard = Vec::new();
+        // for c in self.clients.values() {
+        // scoreboard.push((&c.name, c.tail_len, c.death));
+        // }
+        // scoreboard.sort_by_key(|(_, s, _)| usize::MAX - s);
+        // let mut score_index = 0;
+        // for (i, r) in self.map.iter().enumerate() {
+        //     if i != 0 && i.is_multiple_of(self.map_size.0) {
+        //         match scoreboard.get(score_index) {
+        //             Some((name, score, death)) => {
+        //                 println!(" {name}: {score}, {death}");
+        //                 score_index += 1;
+        //             }
+        //             None => println!(),
+        //         }
+        //     }
+        //     print!("{r}");
+        // }
+        // println!("\nTick: {}", self.tick);
 
         let mut dead_clients = Vec::new();
         let data = WatchUpdate {
@@ -247,7 +247,7 @@ impl Game {
     fn speedup(&mut self) {
         let dur = self.interval.period();
         let m = Duration::from_secs_f32(0.01);
-        if dur > m && dur > Duration::from_secs_f32(0.1) {
+        if dur > m && dur > Duration::from_secs_f32(0.3) {
             let new = dur - m;
             self.interval = interval_at(Instant::now() + new, new);
         }
