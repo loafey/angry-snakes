@@ -21,6 +21,7 @@ struct ClientInfo {
     position: (usize, usize),
     tail: VecDeque<(usize, usize)>,
     tail_len: usize,
+    death: usize,
     direction: Direction,
 }
 
@@ -148,17 +149,42 @@ impl Game {
             self.spawn_apple(1);
         }
 
+        let mut dead_snakes = Vec::new();
+        'outer: for (a1, c1) in &self.clients {
+            for (a2, c2) in &self.clients {
+                if c1.position == c2.position && a1 != a2 {
+                    dead_snakes.push(*a1);
+                    dead_snakes.push(*a2);
+                    continue 'outer;
+                }
+                for t in &c2.tail {
+                    if *t == c1.position {
+                        dead_snakes.push(*a1);
+                        continue 'outer;
+                    }
+                }
+            }
+        }
+        for snake in dead_snakes {
+            let Some(data) = self.clients.get_mut(&snake) else {
+                unreachable!()
+            };
+            data.tail_len = 2;
+            data.tail.clear();
+            data.death += 1;
+        }
+
         let mut scoreboard = Vec::new();
         for c in self.clients.values() {
-            scoreboard.push((&c.name, c.tail_len));
+            scoreboard.push((&c.name, c.tail_len, c.death));
         }
-        scoreboard.sort_by_key(|(_, s)| usize::MAX - s);
+        scoreboard.sort_by_key(|(_, s, _)| usize::MAX - s);
         let mut score_index = 0;
         for (i, r) in self.map.iter().enumerate() {
             if i != 0 && i.is_multiple_of(self.map_size.0) {
                 match scoreboard.get(score_index) {
-                    Some((name, score)) => {
-                        println!(" {name}: {score}");
+                    Some((name, score, death)) => {
+                        println!(" {name}: {score}, {death}");
                         score_index += 1;
                     }
                     None => println!(),
@@ -230,6 +256,7 @@ impl Game {
                             direction: Direction::from(rand::random_range(0..4)),
                             tail: VecDeque::new(),
                             tail_len: 2,
+                            death: 0
                         });
                     },
                     ClientUpdate::Left(addr, reason) => {

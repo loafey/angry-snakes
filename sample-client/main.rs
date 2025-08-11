@@ -204,7 +204,7 @@ async fn main() -> anyhow::Result<()> {
         .cycle();
 
     #[allow(clippy::reversed_empty_ranges)]
-    for _ in 0..3 {
+    for _ in 0..0 {
         tokio::spawn(game_client(names.next().unwrap()));
     }
     game_client(names.next().unwrap()).await?;
