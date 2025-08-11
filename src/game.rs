@@ -155,7 +155,7 @@ impl Game {
         scoreboard.sort_by_key(|(_, s)| usize::MAX - s);
         let mut score_index = 0;
         for (i, r) in self.map.iter().enumerate() {
-            if i.is_multiple_of(self.map_size.0) {
+            if i != 0 && i.is_multiple_of(self.map_size.0) {
                 match scoreboard.get(score_index) {
                     Some((name, score)) => {
                         println!(" {name}: {score}");
