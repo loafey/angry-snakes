@@ -25,9 +25,11 @@ struct ClientInfo {
     tail_len: usize,
     death: usize,
     direction: Direction,
+    id: usize,
 }
 
 pub struct Game {
+    id_counter: usize,
     new_clients: mpsc::UnboundedReceiver<ClientUpdate>,
     msgs: mpsc::UnboundedReceiver<(SocketAddr, ClientMessage)>,
     clients: HashMap<SocketAddr, ClientInfo>,
@@ -50,6 +52,7 @@ impl Game {
             rand::random_range(0..map_size.1),
         )];
         Self {
+            id_counter: 0,
             new_clients,
             msgs,
             clients: HashMap::new(),
@@ -141,11 +144,11 @@ impl Game {
                 c.tail_len += 1;
                 needs_new_apples = true;
             }
-            self.map[index] = MapPiece::SnakeHead;
+            self.map[index] = MapPiece::SnakeHead(c.id);
             for tail in &c.tail {
                 let index = tail.0 + (tail.1 * self.map_size.0);
                 if self.map[index] == MapPiece::Empty {
-                    self.map[index] = MapPiece::Snake;
+                    self.map[index] = MapPiece::Snake(c.id);
                 }
             }
         }
@@ -215,6 +218,7 @@ impl Game {
                     position: s.position,
                     tail_len: s.tail_len,
                     death: s.death,
+                    id: s.id,
                 })
                 .collect(),
         };
@@ -282,6 +286,7 @@ impl Game {
                             break (x,y);
                         };
                         self.clients.insert(addr, ClientInfo {
+                            id: self.id_counter,
                             name,
                             msg: msg_send,
                             msg_count: 0,
@@ -291,6 +296,7 @@ impl Game {
                             tail_len: 2,
                             death: 0
                         });
+                        self.id_counter += 1;
                     },
                     ClientUpdate::Left(addr, reason) => {
                         info!("{addr}: left, {reason}");

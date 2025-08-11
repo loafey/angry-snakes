@@ -21,7 +21,6 @@
         }
 
         #battlefield>.snake {
-            background-color: greenyellow;
             border-radius: 0px;
             padding: 1px;
             display: block;
@@ -54,6 +53,60 @@
             display: grid;
             grid-template-columns: auto auto;
         }
+
+        .snake-num-0 {
+            background-color: greenyellow;
+        }
+
+        .snake-num-1 {
+            background-color: yellow;
+        }
+
+        .snake-num-2 {
+            background-color: red;
+        }
+
+        .snake-num-3 {
+            background-color: orange;
+        }
+
+        .snake-num-4 {
+            background-color: teal;
+        }
+
+        .snake-num-5 {
+            background-color: purple;
+        }
+
+        .snake-num-6 {
+            background-color: olive;
+        }
+
+        .snake-num-7 {
+            background-color: navy;
+        }
+
+        .snake-num-8 {
+            background-color: aqua;
+        }
+
+        .snake-num-9 {
+            background-color: coral;
+        }
+
+        .snake-num-10 {
+            background-color: gray;
+        }
+
+        .snake-num-11 {
+            background-color: hotpink;
+        }
+
+        .player-brick {
+            min-width: 1rem;
+            min-height: 1rem;
+            display: inline-block;
+        }
     </style>
 </head>
 
@@ -65,7 +118,7 @@
             <div class="map-slot">c</div>
             <div class="map-slot">d</div>
         </div>
-        <pre id="scoreboard"></pre>
+        <div id="scoreboard"></div>
     </div>
 
 
@@ -103,11 +156,19 @@
                 for (piece of data.map) {
                     let child = map[index];
                     child.className = "map-base";
-                    switch (piece) {
-                        case "Apple": child.classList.add("apple"); break;
-                        case "Snake": child.classList.add("snake"); break;
-                        case "SnakeHead": child.classList.add("snake-head"); break;
-                        default: child.classList.add("map-slot"); break;
+
+                    if (piece == "Apple") {
+                        child.classList.add("apple");
+                    } else if (piece == "Empty") {
+                        child.classList.add("map-slot");
+                    } else if (piece["Snake"] != null) {
+                        child.classList.add("snake");
+                        child.classList.add(`snake-num-${piece["Snake"] % 12}`);
+                    } else if (piece["SnakeHead"] != null) {
+                        child.classList.add("snake-head");
+                        child.classList.add(`snake-head-${piece["SnakeHead"] % 12}`);
+                    } else {
+                        console.log(piece);
                     }
                     index += 1;
                 }
@@ -120,7 +181,7 @@
             players.sort((a, b) => a.tail_len < b.tail_len);
             scoreboard.innerHTML = "";
             for (player of players) {
-                scoreboard.innerText += `${player.name}: ${player.tail_len} | ${player.death}\n`;
+                scoreboard.innerHTML += `<div class="player-brick snake-num-${player.id}" ></div> ${player.name}: ${player.tail_len} | ${player.death}<br/>`;
             }
         });
     </script>

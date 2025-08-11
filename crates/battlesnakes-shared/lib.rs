@@ -71,8 +71,8 @@ pub type Map = Vec<MapPiece>;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 pub enum MapPiece {
-    Snake,
-    SnakeHead,
+    Snake(usize),
+    SnakeHead(usize),
     Apple,
     Empty,
 }
@@ -80,8 +80,8 @@ pub enum MapPiece {
 impl std::fmt::Display for MapPiece {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MapPiece::Snake => write!(f, "🟩"),
-            MapPiece::SnakeHead => write!(f, "🐍"),
+            MapPiece::Snake(_) => write!(f, "🟩"),
+            MapPiece::SnakeHead(_) => write!(f, "🐍"),
             MapPiece::Apple => write!(f, "🍎"),
             MapPiece::Empty => write!(f, "░░"),
         }
@@ -100,4 +100,5 @@ pub struct PlayerData {
     pub position: (usize, usize),
     pub tail_len: usize,
     pub death: usize,
+    pub id: usize,
 }
