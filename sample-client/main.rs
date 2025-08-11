@@ -163,6 +163,7 @@ async fn game_client(name: String) -> anyhow::Result<()> {
     writer.msg(ClientMessage::SetName(name.clone())).await?;
 
     while let Some(Ok(Message::Text(msg))) = reader.next().await {
+        // println!("{}", String::from_utf8_lossy(msg.as_bytes()));
         let msg = serde_json::from_slice::<ServerMessage>(msg.as_bytes())?;
         match msg {
             ServerMessage::Tick {

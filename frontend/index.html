@@ -132,8 +132,219 @@
         <div id="scoreboard"></div>
     </div>
 
+    <ul>
+        <li>
+            <h4>How do I create a snake?</h4>
+            <ol>
+                <li>Connect to <code id="url-text"></code> using a WebSocket, using the language of your choice!</li>
+                <li>Immediately send a text message over the socket containing the JSON
+                    <code>{"SetName":"your name here"}</code> as string.
+                    <br>
+                    Not doing this will result in being kicked!
+                </li>
+                <li>
+                    Next step is up to you but a basic snake works like the following:
+                    <ul>
+                        <li>In a loop receive text messages from the server.</li>
+                        <li>Parse this message using your favorite JSON parser (see schema or example below).
+                            <br>
+                            This JSON contains info about your snake and the map.
+                            <br>
+                            (It can also be other things but it will mainly be your data!)
+                        </li>
+                        <li>
+                            Utilizing the knowledge your snake has gotten from the map data,
+                            you can do three things:
+                            <ul>
+                                <li>
+                                    Send the JSON object <code>{"Turn":"Clockwise"}</code> as a string to turn
+                                    clockwise.
+                                </li>
+                                <li>
+                                    Send the JSON object <code>{"Turn":"CounterClockwise"}</code> as a string to turn
+                                    counterclockwise.
+                                </li>
+                                <li>
+                                    Send nothing to keep going the same way.
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            Repeat...
+                        </li>
+                        <li>
+                            Good things to know:
+                            <ul>
+                                <li>
+                                    You can only send one message per map update.
+                                    Sending more than one might result in being kicked.
+                                </li>
+                                <li>The integers in the <code>Snake</code> and <code>SnakeHead</code> are snake ids.
+                                </li>
+                                <li>
+                                    I do know the way I transmit the map data is ineffective,
+                                    just have not fixed that yet.
+                                    :)
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+            </ol>
+        </li>
+        <li>
+            <h4>JSON example</h4>
+            <pre>
+{
+  "Tick": {
+    "map": [
+      "Apple", "Empty", "Empty", "Empty", 
+      "Empty", "Empty", "Empty", "Empty",
+      "Empty", "Empty", { "Snake": 0 }, "Empty",
+      "Empty", "Empty", { "SnakeHead": 0 }, "Empty"
+    ],
+    "map_size": [
+      4,
+      4
+    ],
+    "your_position": [
+      2,
+      3
+    ],
+    "your_direction": "Left"
+  }
+}
+</pre>
+        </li>
+        <li>
+            <h4>JSON schema</h4>
+            <pre>
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ServerMessage",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "Tick": {
+          "type": "object",
+          "properties": {
+            "map": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/MapPiece"
+              }
+            },
+            "map_size": {
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer",
+                  "format": "uint",
+                  "minimum": 0
+                },
+                {
+                  "type": "integer",
+                  "format": "uint",
+                  "minimum": 0
+                }
+              ]
+            },
+            "your_direction": {
+              "$ref": "#/$defs/Direction"
+            },
+            "your_position": {
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer",
+                  "format": "uint",
+                  "minimum": 0
+                },
+                {
+                  "type": "integer",
+                  "format": "uint",
+                  "minimum": 0
+                }
+              ]
+            }
+          },
+          "required": [
+            "map",
+            "map_size",
+            "your_position",
+            "your_direction"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "Tick"
+      ]
+    }
+  ],
+  "$defs": {
+    "Direction": {
+      "type": "string",
+      "enum": [
+        "Left",
+        "Right",
+        "Up",
+        "Down"
+      ]
+    },
+    "MapPiece": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "Apple",
+            "Empty"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Snake": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "Snake"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "SnakeHead": {
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "SnakeHead"
+          ]
+        }
+      ]
+    }
+  }
+}
+            </pre>
+        </li>
+    </ul>
 
     <script>
+        document.getElementById("url-text").innerText =
+            `${window.window.location.href}ws`;
         const socket = new WebSocket("watch");
         const battlefield = document.getElementById("battlefield");
         const scoreboard = document.getElementById("scoreboard");

@@ -1,5 +1,6 @@
 use std::ops::{Add, AddAssign};
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -8,7 +9,9 @@ pub enum TurnDirection {
     CounterClockwise,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    JsonSchema, Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 pub enum Direction {
     Left,
     Right,
@@ -57,7 +60,7 @@ pub enum ClientMessage {
     Turn(TurnDirection),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(JsonSchema, Debug, Serialize, Deserialize, Clone)]
 pub enum ServerMessage {
     Tick {
         map: Map,
@@ -69,7 +72,7 @@ pub enum ServerMessage {
 
 pub type Map = Vec<MapPiece>;
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[derive(JsonSchema, Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
 pub enum MapPiece {
     Snake(usize),
     SnakeHead(usize),

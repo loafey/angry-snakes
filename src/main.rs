@@ -11,6 +11,7 @@ use axum::{
 };
 use battlesnakes_shared::{ClientMessage, ServerMessage, WatchUpdate};
 use futures_util::{SinkExt as _, StreamExt as _};
+use schemars::schema_for;
 use std::{collections::HashMap, net::SocketAddr, time::Duration};
 use tokio::{
     sync::{mpsc, oneshot},
@@ -43,6 +44,14 @@ struct ServerState {
 
 #[tokio::main]
 async fn main() {
+    #[allow(clippy::print_stdout, clippy::unwrap_used)]
+    {
+        println!(
+            "Client JSON schema:\n{}",
+            serde_json::to_string_pretty(&schema_for!(ServerMessage)).unwrap()
+        );
+    }
+
     let subscriber = tracing_subscriber::fmt()
         .with_max_level(tracing::Level::TRACE)
         .with_env_filter("none,battlesnakes=trace")
