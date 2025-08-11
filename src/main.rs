@@ -5,7 +5,7 @@ use axum::{
     Router,
     extract::{
         ConnectInfo, State, WebSocketUpgrade,
-        ws::{Message, Utf8Bytes, WebSocket},
+        ws::{Message, Utf8Bytes},
     },
     response::IntoResponse,
     routing::{any, get},
@@ -13,11 +13,8 @@ use axum::{
 use futures_util::{SinkExt as _, StreamExt as _};
 use schemars::schema_for;
 use snakes_shared::{ClientMessage, ServerMessage, WatchUpdate};
-use std::{collections::HashMap, net::SocketAddr, time::Duration};
-use tokio::{
-    sync::{mpsc, oneshot},
-    time::interval,
-};
+use std::net::SocketAddr;
+use tokio::sync::{mpsc, oneshot};
 
 use crate::{frontend::index, game::Game};
 mod frontend;

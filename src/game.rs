@@ -1,5 +1,4 @@
 use std::{
-    arch::naked_asm,
     collections::{HashMap, VecDeque},
     net::SocketAddr,
     time::Duration,

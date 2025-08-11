@@ -2,202 +2,202 @@
 <html>
 
 <head>
-    <meta charset="UTF-8" />
-    <title>angry-snakes 🐍</title>
-    <style>
-        #battlefield {
-            display: grid;
-        }
+  <meta charset="UTF-8" />
+  <title>angry-snakes 🐍</title>
+  <style>
+    #battlefield {
+      display: grid;
+    }
 
-        #battlefield>.map-base {
-            transition-duration: 100ms;
-        }
+    #battlefield>.map-base {
+      transition-duration: 100ms;
+    }
 
-        #battlefield>.map-slot {
-            background-color: lightgray;
-            border-radius: 5px;
-            margin: 1px;
-            display: block;
-        }
+    #battlefield>.map-slot {
+      background-color: lightgray;
+      border-radius: 5px;
+      margin: 1px;
+      display: block;
+    }
 
-        #battlefield>.snake {
-            border-radius: 0px;
-            padding: 1px;
-            display: block;
-        }
+    #battlefield>.snake {
+      border-radius: 0px;
+      padding: 1px;
+      display: block;
+    }
 
-        #battlefield>.snake-head {
-            background-color: green;
-            border-radius: 5px;
-            margin: 1px;
-            display: block;
-        }
+    #battlefield>.snake-head {
+      background-color: green;
+      border-radius: 5px;
+      margin: 1px;
+      display: block;
+    }
 
-        #battlefield>.snake-head::after {
-            content: "🐍";
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+    #battlefield>.snake-head::after {
+      content: "🐍";
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 
-        #battlefield>.apple {
-            background-color: red;
-            border-radius: 100%;
-            margin: 4px;
-            display: block;
-        }
+    #battlefield>.apple {
+      background-color: red;
+      border-radius: 100%;
+      margin: 4px;
+      display: block;
+    }
 
-        #app {
-            display: grid;
-            grid-template-columns: auto auto;
-        }
+    #app {
+      display: grid;
+      grid-template-columns: auto auto;
+    }
 
-        .snake-num-0 {
-            background-color: greenyellow;
-        }
+    .snake-num-0 {
+      background-color: greenyellow;
+    }
 
-        .snake-num-1 {
-            background-color: yellow;
-        }
+    .snake-num-1 {
+      background-color: yellow;
+    }
 
-        .snake-num-2 {
-            background-color: red;
-        }
+    .snake-num-2 {
+      background-color: red;
+    }
 
-        .snake-num-3 {
-            background-color: orange;
-        }
+    .snake-num-3 {
+      background-color: orange;
+    }
 
-        .snake-num-4 {
-            background-color: teal;
-        }
+    .snake-num-4 {
+      background-color: teal;
+    }
 
-        .snake-num-5 {
-            background-color: purple;
-        }
+    .snake-num-5 {
+      background-color: purple;
+    }
 
-        .snake-num-6 {
-            background-color: olive;
-        }
+    .snake-num-6 {
+      background-color: olive;
+    }
 
-        .snake-num-7 {
-            background-color: navy;
-        }
+    .snake-num-7 {
+      background-color: navy;
+    }
 
-        .snake-num-8 {
-            background-color: aqua;
-        }
+    .snake-num-8 {
+      background-color: aqua;
+    }
 
-        .snake-num-9 {
-            background-color: coral;
-        }
+    .snake-num-9 {
+      background-color: coral;
+    }
 
-        .snake-num-10 {
-            background-color: gray;
-        }
+    .snake-num-10 {
+      background-color: gray;
+    }
 
-        .snake-num-11 {
-            background-color: hotpink;
-        }
+    .snake-num-11 {
+      background-color: hotpink;
+    }
 
-        .player-brick {
-            min-width: 1rem;
-            min-height: 1rem;
-            display: inline-block;
-        }
-    </style>
+    .player-brick {
+      min-width: 1rem;
+      min-height: 1rem;
+      display: inline-block;
+    }
+  </style>
 </head>
 
 <body>
-    <div style="display: flex; align-items: center;">
-        <h1>angry-snakes</h1>
-        &nbsp;
-        &nbsp;
-        <p>
-            🤓👉 <a href="https://github.com/loafey/angry-snakes">source</a>
-            <br>
-            baked by
-            <a href="https://loafey.se">@loafey</a> 🐍🍞
-        </p>
+  <div style="display: flex; align-items: center;">
+    <h1>angry-snakes</h1>
+    &nbsp;
+    &nbsp;
+    <p>
+      🤓👉 <a href="https://github.com/loafey/angry-snakes">source</a>
+      <br>
+      baked by
+      <a href="https://loafey.se">@loafey</a> 🐍🍞
+    </p>
+  </div>
+  <div id="app">
+    <div id="battlefield">
+      <div class="map-slot">a</div>
+      <div class="map-slot">b</div>
+      <div class="map-slot">c</div>
+      <div class="map-slot">d</div>
     </div>
-    <div id="app">
-        <div id="battlefield">
-            <div class="map-slot">a</div>
-            <div class="map-slot">b</div>
-            <div class="map-slot">c</div>
-            <div class="map-slot">d</div>
-        </div>
-        <div id="scoreboard"></div>
-    </div>
+    <div id="scoreboard"></div>
+  </div>
 
-    <ul>
-        <li>
-            <h4>How do I create a snake?</h4>
-            <ol>
-                <li>Connect to <code id="url-text"></code> using a WebSocket, using the language of your choice!</li>
-                <li>Immediately send a text message over the socket containing the JSON
-                    <code>{"SetName":"your name here"}</code> as string.
-                    <br>
-                    Not doing this will result in being kicked!
-                </li>
-                <li>
-                    Next step is up to you but a basic snake works like the following:
-                    <ul>
-                        <li>In a loop receive text messages from the server.</li>
-                        <li>Parse this message using your favorite JSON parser (see schema or example below).
-                            <br>
-                            This JSON contains info about your snake and the map.
-                            <br>
-                            (It can also be other things but it will mainly be your data!)
-                        </li>
-                        <li>
-                            Utilizing the knowledge your snake has gotten from the map data,
-                            you can do three things:
-                            <ul>
-                                <li>
-                                    Send the JSON object <code>{"Turn":"Clockwise"}</code> as a string to turn
-                                    clockwise.
-                                </li>
-                                <li>
-                                    Send the JSON object <code>{"Turn":"CounterClockwise"}</code> as a string to turn
-                                    counterclockwise.
-                                </li>
-                                <li>
-                                    Send nothing to keep going the same way.
-                                </li>
-                            </ul>
-                        </li>
-                        <li>
-                            Repeat...
-                        </li>
-                    </ul>
-                </li>
-                <li>
-                    Good things to know:
-                    <ul>
-                        <li>Going outside the map wraps you around.</li>
-                        <li>
-                            You can only send one message per map update.
-                            Sending more than one might result in being kicked.
-                        </li>
-                        <li>The integers in the <code>Snake</code> and <code>SnakeHead</code> are snake ids.
-                        </li>
-                        <li>
-                            I do know the way I transmit the map data is ineffective,
-                            just have not fixed that yet.
-                            :)
-                        </li>
-                    </ul>
-                </li>
-            </ol>
+  <ul>
+    <li>
+      <h4>How do I create a snake?</h4>
+      <ol>
+        <li>Connect to <code id="url-text"></code> using a WebSocket, using the language of your choice!</li>
+        <li>Immediately send a text message over the socket containing the JSON
+          <code>{"SetName":"your name here"}</code> as string.
+          <br>
+          Not doing this will result in being kicked!
         </li>
         <li>
-            <h4>Bare minimum JavaScript snake</h4>
-            Just replace the address and this will run as is
-            in Node, your browser or whatever you are using!
-            <pre>
+          Next step is up to you but a basic snake works like the following:
+          <ul>
+            <li>In a loop receive text messages from the server.</li>
+            <li>Parse this message using your favorite JSON parser (see schema or example below).
+              <br>
+              This JSON contains info about your snake and the map.
+              <br>
+              (It can also be other things but it will mainly be your data!)
+            </li>
+            <li>
+              Utilizing the knowledge your snake has gotten from the map data,
+              you can do three things:
+              <ul>
+                <li>
+                  Send the JSON object <code>{"Turn":"Clockwise"}</code> as a string to turn
+                  clockwise.
+                </li>
+                <li>
+                  Send the JSON object <code>{"Turn":"CounterClockwise"}</code> as a string to turn
+                  counterclockwise.
+                </li>
+                <li>
+                  Send nothing to keep going the same way.
+                </li>
+              </ul>
+            </li>
+            <li>
+              Repeat...
+            </li>
+          </ul>
+        </li>
+        <li>
+          Good things to know:
+          <ul>
+            <li>Going outside the map wraps you around.</li>
+            <li>
+              You can only send one message per map update.
+              Sending more than one might result in being kicked.
+            </li>
+            <li>The integers in the <code>Snake</code> and <code>SnakeHead</code> are snake ids.
+            </li>
+            <li>
+              I do know the way I transmit the map data is ineffective,
+              just have not fixed that yet.
+              :)
+            </li>
+          </ul>
+        </li>
+      </ol>
+    </li>
+    <li>
+      <h4>Bare minimum JavaScript snake</h4>
+      Just replace the address and this will run as is
+      in Node, your browser or whatever you are using!
+      <pre>
 const socket = new WebSocket("address-here");
 
 socket.addEventListener("open", (event) => {
@@ -209,10 +209,10 @@ socket.addEventListener("message", (event) => {
     socket.send(JSON.stringify({ Turn: "Clockwise" }));
 });
             </pre>
-        </li>
-        <li>
-            <h4>JSON example</h4>
-            <pre>
+    </li>
+    <li>
+      <h4>JSON example</h4>
+      <pre>
 {
   "Tick": {
     "map": [
@@ -233,10 +233,10 @@ socket.addEventListener("message", (event) => {
   }
 }
 </pre>
-        </li>
-        <li>
-            <h4>JSON schema</h4>
-            <pre>
+    </li>
+    <li>
+      <h4>JSON schema</h4>
+      <pre>
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ServerMessage",
@@ -357,74 +357,74 @@ socket.addEventListener("message", (event) => {
   }
 }
             </pre>
-        </li>
-    </ul>
+    </li>
+  </ul>
 
-    <script>
-        document.getElementById("url-text").innerText =
-            `${window.window.location.href}ws`;
-        const socket = new WebSocket("watch");
-        const battlefield = document.getElementById("battlefield");
-        const scoreboard = document.getElementById("scoreboard");
-        let lastSize = [0, 0];
-        let map = [];
+  <script>
+    document.getElementById("url-text").innerText =
+      `${window.window.location.href}ws`;
+    const socket = new WebSocket("watch");
+    const battlefield = document.getElementById("battlefield");
+    const scoreboard = document.getElementById("scoreboard");
+    let lastSize = [0, 0];
+    let map = [];
 
-        socket.addEventListener("open", (event) => {
-            // socket.send("Hello Server!");
-        });
+    socket.addEventListener("open", (event) => {
+      // socket.send("Hello Server!");
+    });
 
-        socket.addEventListener("message", (event) => {
-            const data = JSON.parse(event.data);
-            if (lastSize[0] != data.map_size[0] && lastSize[1] != data.map_size[1]) {
-                console.warn(`redraw: ([${lastSize}] != [${data.map_size}])`);
-                lastSize = data.map_size;
-                map = [];
-                battlefield.innerHTML = '';
-                battlefield.style.gridTemplateColumns = `repeat(${lastSize[0]}, 32px)`;
-                battlefield.style.gridTemplateRows = `repeat(${lastSize[1]}, 32px)`;
-                console.log(battlefield.style.gridTemplateRows);
-                for (let y = 0; y < lastSize[1]; y++) {
-                    for (let x = 0; x < lastSize[0]; x++) {
-                        let slot = document.createElement("div");
-                        slot.classList.add("map-slot");
-                        battlefield.appendChild(slot);
-                        map.push(slot);
-                    }
-                }
-            } else {
-                let index = 0;
-                for (piece of data.map) {
-                    let child = map[index];
-                    child.className = "map-base";
+    socket.addEventListener("message", (event) => {
+      const data = JSON.parse(event.data);
+      if (lastSize[0] != data.map_size[0] && lastSize[1] != data.map_size[1]) {
+        console.warn(`redraw: ([${lastSize}] != [${data.map_size}])`);
+        lastSize = data.map_size;
+        map = [];
+        battlefield.innerHTML = '';
+        battlefield.style.gridTemplateColumns = `repeat(${lastSize[0]}, 32px)`;
+        battlefield.style.gridTemplateRows = `repeat(${lastSize[1]}, 32px)`;
+        console.log(battlefield.style.gridTemplateRows);
+        for (let y = 0; y < lastSize[1]; y++) {
+          for (let x = 0; x < lastSize[0]; x++) {
+            let slot = document.createElement("div");
+            slot.classList.add("map-slot");
+            battlefield.appendChild(slot);
+            map.push(slot);
+          }
+        }
+      } else {
+        let index = 0;
+        for (piece of data.map) {
+          let child = map[index];
+          child.className = "map-base";
 
-                    if (piece == "Apple") {
-                        child.classList.add("apple");
-                    } else if (piece == "Empty") {
-                        child.classList.add("map-slot");
-                    } else if (piece["Snake"] != null) {
-                        child.classList.add("snake");
-                        child.classList.add(`snake-num-${piece["Snake"] % 12}`);
-                    } else if (piece["SnakeHead"] != null) {
-                        child.classList.add("snake-head");
-                        child.classList.add(`snake-head-${piece["SnakeHead"] % 12}`);
-                    } else {
-                        console.log(piece);
-                    }
-                    index += 1;
-                }
-            }
+          if (piece == "Apple") {
+            child.classList.add("apple");
+          } else if (piece == "Empty") {
+            child.classList.add("map-slot");
+          } else if (piece["Snake"] != null) {
+            child.classList.add("snake");
+            child.classList.add(`snake-num-${piece["Snake"] % 12}`);
+          } else if (piece["SnakeHead"] != null) {
+            child.classList.add("snake-head");
+            child.classList.add(`snake-head-${piece["SnakeHead"] % 12}`);
+          } else {
+            console.log(piece);
+          }
+          index += 1;
+        }
+      }
 
-            let players = [];
-            for (player of data.clients) {
-                players.push(player);
-            }
-            players.sort((a, b) => a.tail_len < b.tail_len);
-            scoreboard.innerHTML = "";
-            for (player of players) {
-                scoreboard.innerHTML += `<div class="player-brick snake-num-${player.id}" ></div> ${player.name}: ${player.tail_len} | ${player.death}<br/>`;
-            }
-        });
-    </script>
+      let players = [];
+      for (player of data.clients) {
+        players.push(player);
+      }
+      players.sort((a, b) => a.tail_len < b.tail_len);
+      scoreboard.innerHTML = "";
+      for (player of players) {
+        scoreboard.innerHTML += `<div class="player-brick snake-num-${player.id}" ></div> ${player.name}: ${player.tail_len} | ${player.death}<br/>`;
+      }
+    });
+  </script>
 </body>
 
 </html>
