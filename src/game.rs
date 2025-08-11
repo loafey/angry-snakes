@@ -270,6 +270,7 @@ impl Game {
                     cli.msg_count = 0;
                 }
                 for cli in to_remove {
+                    info!("{cli} left");
                     self.clients.remove(&cli);
                 }
                 return self.handle_tick().await;

@@ -51,7 +51,7 @@ async fn main() {
 
     let subscriber = tracing_subscriber::fmt()
         .with_max_level(tracing::Level::TRACE)
-        .with_env_filter("none,battlesnakes=trace")
+        .with_env_filter("none,angry_snakes=trace")
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("failed set up tracing");
 
