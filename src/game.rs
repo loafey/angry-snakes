@@ -169,10 +169,15 @@ impl Game {
                 }
             }
         }
+        let map_size = self.map_size;
         for snake in dead_snakes {
             let Some(data) = self.clients.get_mut(&snake) else {
                 unreachable!()
             };
+            data.position = (
+                rand::random_range(0..map_size.0),
+                rand::random_range(0..map_size.1),
+            );
             data.tail_len = 2;
             data.tail.clear();
             data.death += 1;
