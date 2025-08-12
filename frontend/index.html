@@ -256,8 +256,8 @@ socket.addEventListener("message", (event) => {
     const lobbyId = urlParams.get("lobby") ?? 0;
     document.getElementById("lobby-id").innerText = `${lobbyId}`;
 
-    document.getElementById("url-text").innerText = `ws://${window.window.location.host}/ws`;
-    document.getElementById("url-text-2").innerText = `ws://${window.window.location.host}/ws?lobby=<id>`;
+    document.getElementById("url-text").innerText = `wss://${window.window.location.host}/ws`;
+    document.getElementById("url-text-2").innerText = `wss://${window.window.location.host}/ws?lobby=<id>`;
     const socket = new WebSocket(`watch?lobby=${lobbyId}`);
     const battlefield = document.getElementById("battlefield");
     const scoreboard = document.getElementById("scoreboard");
