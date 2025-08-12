@@ -18,3 +18,4 @@ serde_json.workspace = true
 anyhow.workspace = true
 rand.workspace = true
 pathfinding.workspace = true
+tokio-native-tls.workspace = true
