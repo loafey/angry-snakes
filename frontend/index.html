@@ -141,7 +141,12 @@
     <li>
       <h4>How do I create a snake?</h4>
       <ol>
-        <li>Connect to <code id="url-text"></code> using a WebSocket, using the language of your choice!</li>
+        <li>
+          Connect to <code id="url-text"></code> using a WebSocket, using the language of your choice!
+          <br>
+          If you want to connect to a lobby you can instead use <code id="url-text-2"></code>,
+          where <code>&lt;id&gt;</code> is any positive integer you want.
+        </li>
         <li>Immediately send a text message over the socket containing the JSON
           <code>{"SetName":"your name here"}</code> as string.
           <br>
@@ -251,8 +256,8 @@ socket.addEventListener("message", (event) => {
     const lobbyId = urlParams.get("lobby") ?? 0;
     document.getElementById("lobby-id").innerText = `${lobbyId}`;
 
-    document.getElementById("url-text").innerText =
-      `${window.window.location.href}ws`;
+    document.getElementById("url-text").innerText = `ws://${window.window.location.host}/ws`;
+    document.getElementById("url-text-2").innerText = `ws://${window.window.location.host}/ws?lobby=<id>`;
     const socket = new WebSocket(`watch?lobby=${lobbyId}`);
     const battlefield = document.getElementById("battlefield");
     const scoreboard = document.getElementById("scoreboard");
