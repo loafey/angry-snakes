@@ -141,9 +141,9 @@ fn path_to_apple(
     }
 }
 
-async fn game_client(name: String) -> anyhow::Result<()> {
+async fn game_client(lobby: String, name: String) -> anyhow::Result<()> {
     println!("My name is: {name}");
-    let (socket, _) = match connect_async("ws://0.0.0.0:8000/ws").await {
+    let (socket, _) = match connect_async(&lobby).await {
         Ok(o) => o,
         Err(e) => match e {
             tungstenite::Error::Http(res) => {
@@ -153,7 +153,7 @@ async fn game_client(name: String) -> anyhow::Result<()> {
                     .map(|a| String::from_utf8_lossy(&a).to_string());
                 panic!("http error ({status}): {msg:?}")
             }
-            _ => panic!("{e}"),
+            _ => panic!("trying to connect to {lobby}: {e}"),
         },
     };
 
@@ -204,14 +204,19 @@ async fn main() -> anyhow::Result<()> {
         .map(|s| s.to_string())
         .cycle();
 
-    let snake_count = args()
+    let lobby = args()
         .nth(1)
+        .unwrap_or_else(|| "ws://0.0.0.0:8000/ws".to_string());
+
+    let snake_count = args()
+        .nth(2)
         .and_then(|s| s.parse::<usize>().ok())
         .unwrap_or_default();
+
     #[allow(clippy::reversed_empty_ranges)]
     for _ in 0..snake_count {
-        tokio::spawn(game_client(names.next().unwrap()));
+        tokio::spawn(game_client(lobby.clone(), names.next().unwrap()));
     }
-    game_client(names.next().unwrap()).await?;
+    game_client(lobby, names.next().unwrap()).await?;
     Ok(())
 }
