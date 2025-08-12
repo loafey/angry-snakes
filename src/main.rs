@@ -14,8 +14,8 @@ use futures_util::{SinkExt as _, StreamExt as _};
 use schemars::schema_for;
 use serde::Deserialize;
 use snakes_shared::{ClientMessage, ServerMessage, WatchUpdate};
-use std::{io::Write, net::SocketAddr};
-use tokio::sync::{mpsc, oneshot};
+use std::{collections::HashMap, io::Write, net::SocketAddr, sync::LazyLock};
+use tokio::sync::{RwLock, mpsc, oneshot};
 
 use crate::{
     frontend::{index, serve_schema},
@@ -37,10 +37,40 @@ enum ClientUpdate {
 #[macro_use]
 extern crate tracing;
 
+static STATE: LazyLock<RwLock<HashMap<usize, LobbyInfo>>> = LazyLock::new(Default::default);
+
 #[derive(Clone)]
-struct ServerState {
+struct LobbyInfo {
     client_update: mpsc::UnboundedSender<ClientUpdate>,
     msg_send: mpsc::UnboundedSender<(SocketAddr, ClientMessage)>,
+}
+
+async fn get_lobby_info(lobby: usize) -> LobbyInfo {
+    let read = STATE.read().await;
+    if let Some(ls) = read.get(&lobby) {
+        return ls.clone();
+    }
+    drop(read);
+    let mut write = STATE.write().await;
+    let (mut game, msg_send, client_update) = Game::new(lobby);
+    let ls = LobbyInfo {
+        client_update,
+        msg_send,
+    };
+    write.insert(lobby, ls.clone());
+    drop(write);
+
+    tokio::spawn(async move {
+        loop {
+            let Err(e) = game.tick().await else {
+                continue;
+            };
+            warn!("lobby {lobby}: error {e}");
+            STATE.write().await.remove(&lobby);
+            break;
+        }
+    });
+    ls
 }
 
 #[tokio::main]
@@ -58,27 +88,11 @@ async fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("failed set up tracing");
 
-    let (client_update, client_update_recv) = mpsc::unbounded_channel();
-    let (msg_send, msg_recv) = mpsc::unbounded_channel();
     let app = Router::new()
         .route("/", get(index))
         .route("/schema", get(serve_schema))
         .route("/watch", any(watch_ws_handler))
-        .route("/ws", any(game_ws_handler))
-        .with_state(ServerState {
-            client_update,
-            msg_send,
-        });
-
-    tokio::spawn(async move {
-        let mut game = Game::new(msg_recv, client_update_recv);
-        loop {
-            let Err(e) = game.tick().await else {
-                continue;
-            };
-            error!("game loop: {e}");
-        }
-    });
+        .route("/ws", any(game_ws_handler));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000")
         .await
@@ -100,13 +114,12 @@ async fn watch_ws_handler(
     Query(WSConnectInfo { lobby }): Query<WSConnectInfo>,
     ws: WebSocketUpgrade,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    State(state): State<ServerState>,
 ) -> impl IntoResponse {
     let lobby = lobby.unwrap_or_default();
     ws.on_upgrade(async move |socket| {
         let socket = socket;
         let who = addr;
-        let ServerState { client_update, .. } = state;
+        let LobbyInfo { client_update, .. } = get_lobby_info(lobby).await;
         let (pipe_send, mut pipe) = mpsc::unbounded_channel();
 
         client_update
@@ -138,17 +151,16 @@ async fn game_ws_handler(
     Query(WSConnectInfo { lobby }): Query<WSConnectInfo>,
     ws: WebSocketUpgrade,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    State(state): State<ServerState>,
 ) -> impl IntoResponse {
     let lobby = lobby.unwrap_or_default();
     ws.on_upgrade(async move |socket| {
         let mut socket = socket;
         let who = addr;
-        let ServerState {
+        let LobbyInfo {
             client_update,
             msg_send,
             ..
-        } = state;
+        } = get_lobby_info(lobby).await;
 
         let Some(ClientMessage::SetName(name)) = socket
             .recv()

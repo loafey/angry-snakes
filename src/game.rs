@@ -9,7 +9,7 @@ use snakes_shared::{
     ClientMessage, Direction, Map, MapPiece, PlayerData, ServerMessage, WatchUpdate,
 };
 use tokio::{
-    sync::mpsc,
+    sync::{mpsc, oneshot},
     time::{Instant, Interval, interval, interval_at},
 };
 
@@ -28,6 +28,7 @@ struct ClientInfo {
 }
 
 pub struct Game {
+    id: usize,
     id_counter: usize,
     new_clients: mpsc::UnboundedReceiver<ClientUpdate>,
     msgs: mpsc::UnboundedReceiver<(SocketAddr, ClientMessage)>,
@@ -42,26 +43,37 @@ pub struct Game {
 }
 impl Game {
     pub fn new(
-        msgs: mpsc::UnboundedReceiver<(SocketAddr, ClientMessage)>,
-        new_clients: mpsc::UnboundedReceiver<ClientUpdate>,
-    ) -> Self {
+        id: usize,
+    ) -> (
+        Self,
+        mpsc::UnboundedSender<(SocketAddr, ClientMessage)>,
+        mpsc::UnboundedSender<ClientUpdate>,
+    ) {
+        info!("lobby {id}: started game");
         let map_size = (20, 14);
+        let (msgs_send, msgs) = mpsc::unbounded_channel();
+        let (new_clients_send, new_clients) = mpsc::unbounded_channel();
         let apples = vec![(
             rand::random_range(0..map_size.0),
             rand::random_range(0..map_size.1),
         )];
-        Self {
-            id_counter: 0,
-            new_clients,
-            msgs,
-            clients: HashMap::new(),
-            interval: interval(Duration::from_secs(1)),
-            map: vec![MapPiece::Empty; map_size.0 * map_size.1],
-            map_size,
-            tick: 0,
-            apples,
-            watchers: HashMap::new(),
-        }
+        (
+            Self {
+                id,
+                id_counter: 0,
+                new_clients,
+                msgs,
+                clients: HashMap::new(),
+                interval: interval(Duration::from_secs(1)),
+                map: vec![MapPiece::Empty; map_size.0 * map_size.1],
+                map_size,
+                tick: 0,
+                apples,
+                watchers: HashMap::new(),
+            },
+            msgs_send,
+            new_clients_send,
+        )
     }
 
     fn spawn_apple(&mut self, count: usize) {
@@ -185,26 +197,6 @@ impl Game {
             data.death += 1;
         }
 
-        // let mut scoreboard = Vec::new();
-        // for c in self.clients.values() {
-        // scoreboard.push((&c.name, c.tail_len, c.death));
-        // }
-        // scoreboard.sort_by_key(|(_, s, _)| usize::MAX - s);
-        // let mut score_index = 0;
-        // for (i, r) in self.map.iter().enumerate() {
-        //     if i != 0 && i.is_multiple_of(self.map_size.0) {
-        //         match scoreboard.get(score_index) {
-        //             Some((name, score, death)) => {
-        //                 println!(" {name}: {score}, {death}");
-        //                 score_index += 1;
-        //             }
-        //             None => println!(),
-        //         }
-        //     }
-        //     print!("{r}");
-        // }
-        // println!("\nTick: {}", self.tick);
-
         let mut dead_clients = Vec::new();
         let data = WatchUpdate {
             map: self.map.clone(),
@@ -233,7 +225,10 @@ impl Game {
     }
     async fn handle_message(&mut self, who: SocketAddr, msg: ClientMessage) -> anyhow::Result<()> {
         let Some(cli) = self.clients.get_mut(&who) else {
-            error!("got message for non-existent client: {who}");
+            error!(
+                "lobby {}: got message for non-existent client: {who}",
+                self.id
+            );
             return Ok(());
         };
         match msg {
@@ -253,7 +248,25 @@ impl Game {
     }
 
     pub async fn tick(&mut self) -> anyhow::Result<()> {
-        let (addr, msg) = tokio::select! {
+        let (empty_send, empty_recv) =
+            oneshot::channel::<Result<ClientUpdate, (SocketAddr, ClientMessage)>>();
+        if self.clients.is_empty() && self.watchers.is_empty() {
+            tokio::select! {
+                _ = tokio::time::sleep(Duration::from_secs(5)) => {
+                    return Err(anyhow::Error::msg("no clients"));
+                }
+                msg = self.new_clients.recv() => {
+                    let msg = msg.context("new client pipe is dead")?;
+                    _ = empty_send.send(Ok(msg));
+                }
+                msg = self.msgs.recv() => {
+                    let msg = msg.context("msg pipe is dead")?;
+                    _ = empty_send.send(Err(msg));
+                }
+            }
+        }
+        let msg = tokio::select! {
+            msg = empty_recv => msg?,
             _ = self.interval.tick() => {
                 self.speedup();
                 let mut to_remove = Vec::new();
@@ -270,29 +283,39 @@ impl Game {
                     cli.msg_count = 0;
                 }
                 for cli in to_remove {
-                    info!("{cli} left");
+                    info!("lobby {}: {cli} left",self.id);
                     self.clients.remove(&cli);
                 }
                 return self.handle_tick().await;
             }
             msg = self.new_clients.recv() => {
                 let msg = msg.context("new client pipe is dead")?;
-                match msg {
-                    ClientUpdate::Join(addr, name, pipe) => {
-                        let (msg_send, msg_recv) = mpsc::unbounded_channel();
-                        trace!("got new client: {addr} | {name}");
-                        _ = pipe.send(msg_recv);
-                        let position = 'outer: loop {
-                            let x = rand::random_range(0..self.map_size.0);
-                            let y = rand::random_range(0..self.map_size.1);
-                            for c in self.clients.values() {
-                                if c.position == (x,y) {
-                                    continue 'outer;
-                                }
+                Ok(msg)
+            }
+            msg = self.msgs.recv() => {
+                let (addr, msg) = msg.context("msg pipe is dead")?;
+                Err((addr,msg))
+            }
+        };
+        match msg {
+            Ok(msg) => match msg {
+                ClientUpdate::Join(addr, name, pipe) => {
+                    let (msg_send, msg_recv) = mpsc::unbounded_channel();
+                    trace!("lobby {}: got new client: {addr} | {name}", self.id);
+                    _ = pipe.send(msg_recv);
+                    let position = 'outer: loop {
+                        let x = rand::random_range(0..self.map_size.0);
+                        let y = rand::random_range(0..self.map_size.1);
+                        for c in self.clients.values() {
+                            if c.position == (x, y) {
+                                continue 'outer;
                             }
-                            break (x,y);
-                        };
-                        self.clients.insert(addr, ClientInfo {
+                        }
+                        break (x, y);
+                    };
+                    self.clients.insert(
+                        addr,
+                        ClientInfo {
                             id: self.id_counter,
                             name,
                             msg: msg_send,
@@ -301,30 +324,34 @@ impl Game {
                             direction: Direction::from(rand::random_range(0..4)),
                             tail: VecDeque::new(),
                             tail_len: 2,
-                            death: 0
-                        });
-                        self.id_counter += 1;
-                    },
-                    ClientUpdate::Watcher(addr, send) => {
-                        info!("{addr}: watcher joined");
-                        self.watchers.insert(addr, send);
-                    }
+                            death: 0,
+                        },
+                    );
+                    self.id_counter += 1;
                 }
-                return Ok(());
-            }
-            msg = self.msgs.recv() => {
-                let (addr, msg) = msg.context("msg pipe is dead")?;
-                let cl = self.clients.get_mut(&addr).context(format!("missing client: {addr}"))?;
+                ClientUpdate::Watcher(addr, send) => {
+                    info!("lobby {}: watcher joined at {addr}", self.id);
+                    self.watchers.insert(addr, send);
+                }
+            },
+            Err((addr, msg)) => {
+                let cl = self
+                    .clients
+                    .get_mut(&addr)
+                    .context(format!("missing client: {addr}"))?;
                 cl.msg_count += 1;
                 if cl.msg_count == 2 || cl.msg_count.is_multiple_of(10) {
-                    warn!("{addr}: sent too many messages: {}", cl.msg_count);
+                    warn!(
+                        "lobby {}: {addr}/{} sent too many messages: {}",
+                        self.id, cl.name, cl.msg_count
+                    );
                 }
                 if cl.msg_count != 1 {
                     return Ok(());
                 }
-                (addr, msg)
+                self.handle_message(addr, msg).await?;
             }
-        };
-        self.handle_message(addr, msg).await
+        }
+        Ok(())
     }
 }
