@@ -4,7 +4,7 @@
 use axum::{
     Router,
     extract::{
-        ConnectInfo, Path, Query, State, WebSocketUpgrade,
+        ConnectInfo, Query, WebSocketUpgrade,
         ws::{Message, Utf8Bytes},
     },
     response::IntoResponse,
@@ -14,7 +14,7 @@ use futures_util::{SinkExt as _, StreamExt as _};
 use schemars::schema_for;
 use serde::Deserialize;
 use snakes_shared::{ClientMessage, ServerMessage, WatchUpdate};
-use std::{collections::HashMap, io::Write, net::SocketAddr, sync::LazyLock};
+use std::{collections::HashMap, env::args, io::Write, net::SocketAddr, sync::LazyLock};
 use tokio::sync::{RwLock, mpsc, oneshot};
 
 use crate::{
@@ -75,12 +75,18 @@ async fn get_lobby_info(lobby: usize) -> LobbyInfo {
 
 #[tokio::main]
 async fn main() {
-    let schema =
-        serde_json::to_string_pretty(&schema_for!(ServerMessage)).expect("failed to encode schema");
-    std::fs::File::create("frontend/schema.json")
-        .expect("failed to create schema file")
-        .write_all(schema.as_bytes())
-        .expect("failed to write to schema file");
+    let schema = args().nth(1).map(|v| v == "schema").unwrap_or_default();
+    if cfg!(debug_assertions) || schema {
+        let schema = serde_json::to_string_pretty(&schema_for!(ServerMessage))
+            .expect("failed to encode schema");
+        std::fs::File::create("frontend/schema.json")
+            .expect("failed to create schema file")
+            .write_all(schema.as_bytes())
+            .expect("failed to write to schema file");
+    }
+    if schema {
+        std::process::exit(0)
+    }
 
     let subscriber = tracing_subscriber::fmt()
         .with_max_level(tracing::Level::TRACE)
