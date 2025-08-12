@@ -13,10 +13,13 @@ use axum::{
 use futures_util::{SinkExt as _, StreamExt as _};
 use schemars::schema_for;
 use snakes_shared::{ClientMessage, ServerMessage, WatchUpdate};
-use std::net::SocketAddr;
+use std::{io::Write, net::SocketAddr};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::{frontend::index, game::Game};
+use crate::{
+    frontend::{index, serve_schema},
+    game::Game,
+};
 mod frontend;
 mod game;
 
@@ -41,13 +44,12 @@ struct ServerState {
 
 #[tokio::main]
 async fn main() {
-    #[allow(clippy::print_stdout, clippy::unwrap_used)]
-    {
-        println!(
-            "Client JSON schema:\n{}",
-            serde_json::to_string_pretty(&schema_for!(ServerMessage)).unwrap()
-        );
-    }
+    let schema =
+        serde_json::to_string_pretty(&schema_for!(ServerMessage)).expect("failed to encode schema");
+    std::fs::File::create("frontend/schema.json")
+        .expect("failed to create schema file")
+        .write_all(schema.as_bytes())
+        .expect("failed to write to schema file");
 
     let subscriber = tracing_subscriber::fmt()
         .with_max_level(tracing::Level::TRACE)
@@ -59,6 +61,7 @@ async fn main() {
     let (msg_send, msg_recv) = mpsc::unbounded_channel();
     let app = Router::new()
         .route("/", get(index))
+        .route("/schema", get(serve_schema))
         .route("/watch", any(watch_ws_handler))
         .route("/ws", any(game_ws_handler))
         .with_state(ServerState {
