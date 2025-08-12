@@ -4,7 +4,7 @@
 use axum::{
     Router,
     extract::{
-        ConnectInfo, State, WebSocketUpgrade,
+        ConnectInfo, Path, Query, State, WebSocketUpgrade,
         ws::{Message, Utf8Bytes},
     },
     response::IntoResponse,
@@ -12,6 +12,7 @@ use axum::{
 };
 use futures_util::{SinkExt as _, StreamExt as _};
 use schemars::schema_for;
+use serde::Deserialize;
 use snakes_shared::{ClientMessage, ServerMessage, WatchUpdate};
 use std::{io::Write, net::SocketAddr};
 use tokio::sync::{mpsc, oneshot};
@@ -90,11 +91,18 @@ async fn main() {
     .expect("server crash");
 }
 
+#[derive(Deserialize)]
+struct WSConnectInfo {
+    lobby: Option<usize>,
+}
+
 async fn watch_ws_handler(
+    Query(WSConnectInfo { lobby }): Query<WSConnectInfo>,
     ws: WebSocketUpgrade,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(state): State<ServerState>,
 ) -> impl IntoResponse {
+    let lobby = lobby.unwrap_or_default();
     ws.on_upgrade(async move |socket| {
         let socket = socket;
         let who = addr;
@@ -127,10 +135,12 @@ async fn watch_ws_handler(
 }
 
 async fn game_ws_handler(
+    Query(WSConnectInfo { lobby }): Query<WSConnectInfo>,
     ws: WebSocketUpgrade,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(state): State<ServerState>,
 ) -> impl IntoResponse {
+    let lobby = lobby.unwrap_or_default();
     ws.on_upgrade(async move |socket| {
         let mut socket = socket;
         let who = addr;

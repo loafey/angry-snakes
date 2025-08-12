@@ -131,6 +131,11 @@
     </div>
     <div id="scoreboard"></div>
   </div>
+  <form method="get">
+    <b>Lobby: <i id="lobby-id">id</i></b>,
+    <input name="lobby" type="number" min="0" max="18446744073709551615">
+    <input type="submit" value="View Lobby">
+  </form>
 
   <ul>
     <li>
@@ -242,9 +247,13 @@ socket.addEventListener("message", (event) => {
   </ul>
 
   <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const lobbyId = urlParams.get("lobby") ?? 0;
+    document.getElementById("lobby-id").innerText = `${lobbyId}`;
+
     document.getElementById("url-text").innerText =
       `${window.window.location.href}ws`;
-    const socket = new WebSocket("watch");
+    const socket = new WebSocket(`watch?lobby=${lobbyId}`);
     const battlefield = document.getElementById("battlefield");
     const scoreboard = document.getElementById("scoreboard");
     let lastSize = [0, 0];
