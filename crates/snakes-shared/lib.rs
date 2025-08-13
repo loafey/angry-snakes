@@ -48,8 +48,8 @@ impl Add<TurnDirection> for Direction {
             (Right, CounterClockwise) => Up,
             (Up, Clockwise) => Right,
             (Up, CounterClockwise) => Left,
-            (Down, Clockwise) => Right,
-            (Down, CounterClockwise) => Left,
+            (Down, Clockwise) => Left,
+            (Down, CounterClockwise) => Right,
         }
     }
 }
