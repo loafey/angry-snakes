@@ -15,8 +15,23 @@ impl<const N: usize> TickBuffer<N> {
     }
     pub fn next(&mut self) -> u64 {
         let val = self.inner[self.index];
-        self.inner[self.index] = rand::random();
         self.index = (self.index + 1) % N;
+        self.inner[self.index] = rand::random();
         val
+    }
+    pub fn current(&self) -> u64 {
+        self.inner[self.index]
+    }
+    pub fn since(&self, val: u64) -> Option<usize> {
+        let mut check = self.index.wrapping_sub(1) % self.inner.len();
+        let mut steps = 0;
+        while self.index != check {
+            steps += 1;
+            if self.inner[check] == val {
+                return Some(steps);
+            }
+            check = check.wrapping_sub(1) % self.inner.len();
+        }
+        None
     }
 }

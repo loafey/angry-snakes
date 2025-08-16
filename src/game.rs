@@ -235,6 +235,12 @@ impl Game {
         };
         match msg {
             ClientMessage::Turn(tick_id, turn_direction) => {
+                println!(
+                    "{} == {} => {:?}",
+                    tick_id,
+                    self.tb.current(),
+                    self.tb.since(tick_id)
+                );
                 cli.direction += turn_direction;
             }
             ClientMessage::SetName(_) => {}
