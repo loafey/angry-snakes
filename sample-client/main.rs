@@ -186,6 +186,8 @@ async fn game_client(lobby: String, name: String) -> anyhow::Result<()> {
                 let path = path_to_apple(&map, map_size, your_position, your_direction);
                 if let Some(dir) = path {
                     writer.msg(ClientMessage::Turn(tick_id, dir)).await?;
+                } else {
+                    writer.msg(ClientMessage::NoTurn(tick_id)).await?;
                 }
 
                 // if rand::random::<bool>() {

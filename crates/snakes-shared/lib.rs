@@ -58,6 +58,7 @@ impl Add<TurnDirection> for Direction {
 pub enum ClientMessage {
     SetName(String),
     Turn(u64, TurnDirection),
+    NoTurn(u64),
 }
 
 #[derive(JsonSchema, Debug, Serialize, Deserialize, Clone)]

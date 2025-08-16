@@ -25,6 +25,7 @@ struct ClientInfo {
     death: usize,
     direction: Direction,
     id: usize,
+    tick_diff: Option<usize>,
 }
 
 pub struct Game {
@@ -233,17 +234,16 @@ impl Game {
             );
             return Ok(());
         };
-        match msg {
+        let tick_id = match msg {
             ClientMessage::Turn(tick_id, turn_direction) => {
-                println!(
-                    "{} == {} => {:?}",
-                    tick_id,
-                    self.tb.current(),
-                    self.tb.since(tick_id)
-                );
                 cli.direction += turn_direction;
+                Some(tick_id)
             }
-            ClientMessage::SetName(_) => {}
+            ClientMessage::NoTurn(tick_id) => Some(tick_id),
+            ClientMessage::SetName(_) => None,
+        };
+        if let Some(tick_id) = tick_id {
+            cli.tick_diff = self.tb.since(tick_id);
         }
         Ok(())
     }
@@ -337,6 +337,7 @@ impl Game {
                             tail: VecDeque::new(),
                             tail_len: 2,
                             death: 0,
+                            tick_diff: Some(0),
                         },
                     );
                     self.id_counter += 1;
