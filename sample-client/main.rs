@@ -165,11 +165,16 @@ async fn game_client(lobby: String, name: String) -> anyhow::Result<()> {
         let msg = serde_json::from_slice::<ServerMessage>(msg.as_bytes())?;
         match msg {
             ServerMessage::Tick {
+                tick_id,
                 map,
                 map_size,
                 your_position,
                 your_direction,
             } => {
+                // if rand::random::<bool>() {
+                //     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                //     println!("sleeping...")
+                // }
                 let map = get_map(map, map_size);
                 // println!();
                 // for r in &map {
@@ -180,7 +185,7 @@ async fn game_client(lobby: String, name: String) -> anyhow::Result<()> {
                 // }
                 let path = path_to_apple(&map, map_size, your_position, your_direction);
                 if let Some(dir) = path {
-                    writer.msg(ClientMessage::Turn(dir)).await?;
+                    writer.msg(ClientMessage::Turn(tick_id, dir)).await?;
                 }
 
                 // if rand::random::<bool>() {

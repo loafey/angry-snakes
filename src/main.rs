@@ -20,9 +20,11 @@ use tokio::sync::{RwLock, mpsc, oneshot};
 use crate::{
     frontend::{index, serve_schema},
     game::Game,
+    tick_buffer::TickBuffer,
 };
 mod frontend;
 mod game;
+mod tick_buffer;
 
 enum ClientUpdate {
     Join(

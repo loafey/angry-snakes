@@ -13,7 +13,7 @@ use tokio::{
     time::{Instant, Interval, interval, interval_at},
 };
 
-use crate::ClientUpdate;
+use crate::{ClientUpdate, tick_buffer::TickBuffer};
 
 struct ClientInfo {
     name: String,
@@ -29,6 +29,7 @@ struct ClientInfo {
 
 pub struct Game {
     id: usize,
+    tb: TickBuffer<50>,
     id_counter: usize,
     new_clients: mpsc::UnboundedReceiver<ClientUpdate>,
     msgs: mpsc::UnboundedReceiver<(SocketAddr, ClientMessage)>,
@@ -59,6 +60,7 @@ impl Game {
         )];
         (
             Self {
+                tb: TickBuffer::new(),
                 id,
                 id_counter: 0,
                 new_clients,
@@ -232,7 +234,9 @@ impl Game {
             return Ok(());
         };
         match msg {
-            ClientMessage::Turn(turn_direction) => cli.direction += turn_direction,
+            ClientMessage::Turn(tick_id, turn_direction) => {
+                cli.direction += turn_direction;
+            }
             ClientMessage::SetName(_) => {}
         }
         Ok(())
@@ -268,10 +272,12 @@ impl Game {
         let msg = tokio::select! {
             msg = empty_recv => msg?,
             _ = self.interval.tick() => {
+                println!("{}", self.tb.next());
                 self.speedup();
                 let mut to_remove = Vec::new();
                 for (addr, cli) in &mut self.clients {
                     let e = cli.msg.send(ServerMessage::Tick {
+                        tick_id: 0,
                         map: self.map.clone(),
                         map_size: self.map_size,
                         your_direction: cli.direction,
