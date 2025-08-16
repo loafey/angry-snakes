@@ -29,6 +29,7 @@ struct ClientInfo {
 }
 
 pub struct Game {
+    compensate: bool,
     id: usize,
     tb: TickBuffer<50>,
     id_counter: usize,
@@ -61,6 +62,7 @@ impl Game {
         )];
         (
             Self {
+                compensate: false,
                 tb: TickBuffer::new(),
                 id,
                 id_counter: 0,
@@ -282,6 +284,19 @@ impl Game {
                 self.speedup();
                 let mut to_remove = Vec::new();
                 for (addr, cli) in &mut self.clients {
+                    // println!("{}: {:?}", cli.name, cli.tick_diff);
+                    // if let Some(d) =  cli.tick_diff
+                    //     && (d > 20 || cli.tick_diff.is_none()) {
+                    //     self.compensate = true;
+                    //     println!("compensate")
+                    // }
+                    if let Some(d) = cli.tick_diff && d > 1 {
+                        cli.tick_diff = Some(d - 1);
+                        continue;
+                    } else if cli.tick_diff.is_none() {
+                        cli.tick_diff = Some(1);
+                        continue;
+                    }
                     let e = cli.msg.send(ServerMessage::Tick {
                         tick_id,
                         map: self.map.clone(),
