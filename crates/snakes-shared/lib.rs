@@ -57,13 +57,13 @@ impl Add<TurnDirection> for Direction {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ClientMessage {
     SetName(String),
-    Turn(usize, TurnDirection),
+    Turn(u64, TurnDirection),
 }
 
 #[derive(JsonSchema, Debug, Serialize, Deserialize, Clone)]
 pub enum ServerMessage {
     Tick {
-        tick_id: usize,
+        tick_id: u64,
         map: Map,
         map_size: (usize, usize),
         your_position: (usize, usize),

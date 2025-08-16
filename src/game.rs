@@ -272,12 +272,12 @@ impl Game {
         let msg = tokio::select! {
             msg = empty_recv => msg?,
             _ = self.interval.tick() => {
-                println!("{}", self.tb.next());
+                let tick_id = self.tb.next();
                 self.speedup();
                 let mut to_remove = Vec::new();
                 for (addr, cli) in &mut self.clients {
                     let e = cli.msg.send(ServerMessage::Tick {
-                        tick_id: 0,
+                        tick_id,
                         map: self.map.clone(),
                         map_size: self.map_size,
                         your_direction: cli.direction,
