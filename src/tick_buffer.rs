@@ -35,3 +35,21 @@ impl<const N: usize> TickBuffer<N> {
         None
     }
 }
+
+mod tests {
+    #[test]
+    fn overflow() {
+        const S: usize = 50;
+        let mut tb: super::TickBuffer<S> = super::TickBuffer::new();
+        for _ in 0..(S * 5000) {
+            let curr = tb.current();
+            tb.next();
+            let mut i = 1;
+            while let Some(x) = tb.since(curr) {
+                assert_eq!(x, i);
+                tb.next();
+                i += 1;
+            }
+        }
+    }
+}
